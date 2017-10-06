@@ -31,7 +31,6 @@ description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention.
     It performs following steps:
-        - Accept EULA
         - Disable STP
         - Enable all ports
         - Create/Join fabric
@@ -150,7 +149,7 @@ options:
 """
 
 EXAMPLES = """
-- name: Auto accept EULA, Disable STP, enable ports and create/join fabric
+- name: Disable STP, enable ports and create/join fabric
     pn_initial_ztp:
       pn_cliusername: "{{ USERNAME }}"
       pn_clipassword: "{{ PASSWORD }}"
@@ -203,7 +202,7 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
-    task = 'Accept EULA, Disable STP, enable ports and create/join fabric'
+    task = 'Disable STP, enable ports and create/join fabric'
     results = []
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
@@ -557,23 +556,6 @@ def main():
     global CHANGED_FLAG
     CHANGED_FLAG = []
 
-    # Auto accept EULA
-    if 'Setup completed successfully' in auto_accept_eula(module):
-        json_msg = {
-            'switch': current_switch,
-            'output': 'Eula accepted'
-        }
-        message += ' %s: EULA accepted \n' % current_switch
-        CHANGED_FLAG.append(True)
-    else:
-        json_msg = {
-            'switch': current_switch,
-            'output': 'Eula has already been accepted'
-        }
-        message += ' %s: EULA has already been accepted \n' % current_switch
-
-    results.append(json_msg)
-
     # Update switch names to match host names from hosts file
     if 'Updated' in update_switch_names(module, current_switch):
         CHANGED_FLAG.append(True)
@@ -705,7 +687,7 @@ def main():
         msg='Initial ZTP configuration executed successfully',
         summary=results,
         exception='',
-        task='Accept EULA, Disable STP, enable ports and create/join fabric',
+        task='Disable STP, enable ports and create/join fabric',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )

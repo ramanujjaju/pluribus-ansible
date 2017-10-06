@@ -120,7 +120,7 @@ options:
 """
 
 EXAMPLES = """
-- name: Configure eBGP/OSPF
+- name: Configure OSPF
   pn_ebgp_ospf:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"

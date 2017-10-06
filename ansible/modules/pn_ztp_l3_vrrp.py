@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI VRRP L3 """
+""" PN CLI L3 VRRP """
 
 #
 # This file is part of Ansible
@@ -18,8 +18,9 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ansible.module_utils.basic import AnsibleModule
 import shlex
+
+from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
@@ -29,10 +30,10 @@ short_description: CLI command to configure VRRP - Layer 3 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -56,28 +57,44 @@ options:
 """
 
 EXAMPLES = """
-    - name: VRRP L3 setup
-      pn_ztp_vrrp_l3:
-        pn_cliusername: "{{ USERNAME }}"
-        pn_clipassword: "{{ PASSWORD }}"
-        pn_spine_list: "{{ groups['spine'] }}"
-        pn_leaf_list: "{{ groups['leaf'] }}"
-        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+- name: Configure L3 VRRP
+  pn_l3_vrrp:
+    pn_cliusername: "{{ USERNAME }}"
+    pn_clipassword: "{{ PASSWORD }}"
+    pn_spine_list: "{{ groups['spine'] }}"
+    pn_leaf_list: "{{ groups['leaf'] }}"
+    pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
 
 CHANGED_FLAG = []
@@ -115,16 +132,18 @@ def run_cli(module, cli):
         return out
 
     if err:
-        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        json_msg = {
+            'switch': '',
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
+        }
         results.append(json_msg)
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
-            task='CLI commands to configure L3 VRRP zero touch provisioning',
-            stderr=err.strip(),
-            msg='L3 VRRP configuration failed',
+            task='Configure L3 vrrp',
+            msg='L3 vrrp configuration failed',
             changed=False
         )
     else:
@@ -164,14 +183,10 @@ def create_vlan(module, vlan_id, switch):
         cli += ' vlan-create id %s scope fabric ' % vlan_id
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: Vlan id %s with scope fabric created successfully \n' % (
-            switch, vlan_id
-        )
-
+        return ' %s: Created vlan id %s with scope fabric \n' % (switch,
+                                                                 vlan_id)
     else:
-        return ' %s: Vlan id %s with scope fabric already exists \n' % (
-            switch, vlan_id
-        )
+        return ''
 
 
 def create_vrouter(module, switch, vrrp_id, vnet_name):
@@ -185,7 +200,7 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
     """
     global CHANGED_FLAG
     output = ''
-    vrouter_name = str(switch) + '-vrouter'
+    vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
@@ -199,6 +214,7 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
+        cli += ' router-type hardware '
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
@@ -261,9 +277,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
         )
         CHANGED_FLAG.append(True)
     else:
-        output = ' %s: Vrouter interface %s already exists for %s \n' % (
-            switch, ip2, vrouter_name
-        )
+        output = ''
 
     cli = clicopy
     cli += ' vrouter-interface-show vrouter-name %s ip %s vlan %s ' % (
@@ -295,11 +309,6 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
         )
         CHANGED_FLAG.append(True)
 
-    else:
-        output += ' %s: Vrouter interface %s already exists for %s \n' % (
-            switch, ip_vip, vrouter_name
-        )
-
     return output
 
 
@@ -324,9 +333,9 @@ def create_cluster(module, switch, name, node1, node2):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s: %s created successfully \n' % (switch, name)
+            return ' %s: Created %s \n' % (switch, name)
     else:
-        return ' %s: %s already exists \n' % (switch, name)
+        return ''
 
 
 def create_vrouter_without_vrrp(module, switch, vnet_name):
@@ -338,7 +347,7 @@ def create_vrouter_without_vrrp(module, switch, vnet_name):
     :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
-    vrouter_name = str(switch) + '-vrouter'
+    vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
@@ -351,12 +360,12 @@ def create_vrouter_without_vrrp(module, switch, vnet_name):
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
+        cli += ' router-type hardware '
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
     else:
-        output = ' %s: Vrouter with name %s already exists \n' % (switch,
-                                                                  vrouter_name)
+        output = ''
 
     return output
 
@@ -398,11 +407,8 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
         return ' %s: Added vrouter interface with ip %s on %s \n' % (
             non_cluster_leaf, ip_gateway, vrouter_name
         )
-
     else:
-        return ' %s: Vrouter interface %s already exists on %s \n' % (
-            non_cluster_leaf, ip_gateway, vrouter_name
-        )
+        return ''
 
 
 def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
@@ -419,7 +425,7 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     """
     node1 = switch_list[0]
     node2 = switch_list[1]
-    name = (node1 + '-to-' + node2 + '-cluster')[:59]
+    name = node1 + '-to-' + node2 + '-cluster'
     host_count = 1
 
     output = create_cluster(module, node2, name, node1, node2)
@@ -474,27 +480,30 @@ def configure_vrrp(module, csv_data):
     csv_data_list = csv_data.split('\n')
     # Parse csv file data and configure VRRP.
     for row in csv_data_list:
-        elements = row.split(',')
-        switch_list = []
-        vlan_id = elements[0]
-        vrrp_ip = elements[1]
-        leaf_switch_1 = str(elements[2])
-        if len(elements) > 5:
-            leaf_switch_2 = str(elements[3])
-            vrrp_id = elements[4]
-            active_switch = str(elements[5])
-            switch_list.append(leaf_switch_1)
-            switch_list.append(leaf_switch_2)
-            output += configure_vrrp_for_clustered_switches(module, vrrp_id,
-                                                            vrrp_ip,
-                                                            active_switch,
-                                                            vlan_id,
-                                                            switch_list)
-
+        if row.startswith('#'):
+            continue
         else:
-            output += configure_vrrp_for_non_clustered_switches(module, vlan_id,
+            elements = row.split(',')
+            elements = filter(None, elements)
+            switch_list = []
+            vlan_id = elements[0].strip()
+            vrrp_ip = elements[1].strip()
+            leaf_switch_1 = elements[2].strip()
+            if len(elements) > 5:
+                leaf_switch_2 = elements[3].strip()
+                vrrp_id = elements[4].strip()
+                active_switch = elements[5].strip()
+                switch_list.append(leaf_switch_1)
+                switch_list.append(leaf_switch_2)
+                output += configure_vrrp_for_clustered_switches(module, vrrp_id,
                                                                 vrrp_ip,
-                                                                leaf_switch_1)
+                                                                active_switch,
+                                                                vlan_id,
+                                                                switch_list)
+
+            else:
+                output += configure_vrrp_for_non_clustered_switches(
+                    module, vlan_id, vrrp_ip, leaf_switch_1)
 
     return output
 
@@ -535,20 +544,22 @@ def main():
 
         for line in message_string.splitlines():
             if replace_string in line:
-                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                json_msg = {
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
+                }
                 results.append(json_msg)
 
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'L3 VRRP configuration executed successfully',
+        task='Configure L3 vrrp',
+        msg='L3 vrrp configuration succeeded',
         summary=results,
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='CLI commands to configure L3 VRRP zero touch provisioning'
     )
-
 
 if __name__ == '__main__':
     main()

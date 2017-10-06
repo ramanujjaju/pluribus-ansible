@@ -1,6 +1,5 @@
 #!/usr/bin/python
 """ PN EULA Accept """
-
 #
 # This file is part of Ansible
 #

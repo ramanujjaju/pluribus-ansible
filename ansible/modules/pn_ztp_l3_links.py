@@ -19,6 +19,7 @@
 #
 
 import shlex
+
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
@@ -68,13 +69,6 @@ options:
     pn_update_fabric_to_inband:
       description:
         - Flag to indicate if fabric network should be updated to in-band.
-      required: False
-      default: False
-      type: bool
-    pn_assign_loopback:
-      description:
-        - Flag to indicate if loopback ips should be assigned to vrouters
-        in layer3 fabric.
       required: False
       default: False
       type: bool
@@ -226,10 +220,9 @@ def modify_stp(module, modify_flag):
             cli += ' switch ' + switch
             cli += ' stp-modify ' + modify_flag
             if 'Success' in run_cli(module, cli):
-                output += ' %s: STP enabled \n' % switch
                 CHANGED_FLAG.append(True)
-        else:
-            output += ' %s: STP is already enabled \n' % switch
+
+        output += ' %s: STP is already enabled \n' % switch
 
     return output
 
@@ -254,10 +247,9 @@ def update_fabric_network_to_inband(module):
             cli += ' switch ' + switch
             cli += ' fabric-local-modify fabric-network in-band '
             if 'Success' in run_cli(module, cli):
-                output += ' %s: Updated fabric network to in-band \n' % switch
                 CHANGED_FLAG.append(True)
-        else:
-            output += ' %s: Fabric network is already in in-band \n' % switch
+
+        output += ' %s: Fabric network is already in in-band \n' % switch
 
     return output
 
@@ -275,14 +267,13 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
     address = address_str.split('.')
     cidr = int(cidr_str)
     supernet = int(supernet_str)
-    #supernet_mapping = {
-    #    30: 2,
-    #    29: 6,
-    #    28: 14,
-    #    27: 30
-    #}
-    supernet_range = (1 << (32 - supernet)) - 2
-    #supernet_range = supernet_mapping[supernet]
+    supernet_mapping = {
+        30: 2,
+        29: 6,
+        28: 14,
+        27: 30
+    }
+    supernet_range = supernet_mapping[supernet]
     base_addr = int(address[3])
     # Initialize the netmask and calculate based on CIDR mask
     mask = [0, 0, 0, 0]
@@ -311,17 +302,10 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
         while count < last_ip[3]:
             hostmin = host + 1
             hostmax = hostmin + supernet_range - 1
-            if supernet == 31:
-                while hostmax <= hostmin:
-                    ips_list.append(hostmax)
-                    hostmax += 1
-                host = hostmin + 1
-            else:
-                while hostmin <= hostmax:
-                    ips_list.append(hostmin)
-                    hostmin += 1
-                host = hostmax + 2
-
+            while hostmin <= hostmax:
+                ips_list.append(hostmin)
+                hostmin += 1
+            host = hostmax + 2
             count = host
 
         list_index = 0
@@ -364,10 +348,8 @@ def create_vrouter(module, switch, vnet_name):
         cli += ' router-type hardware'
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
-    else:
-        return ' %s: Vrouter with name %s already exists \n' % (switch,
-                                                                vrouter_name)
+
+    return ' %s: Vrouter with name %s already exists \n' % (switch, vrouter_name)
 
 
 def create_interface(module, switch, ip, port):
@@ -400,9 +382,6 @@ def create_interface(module, switch, ip, port):
         cli += ' ip ' + ip
         cli += ' l3-port ' + port
         run_cli(module, cli)
-        output += ' %s: Added vrouter interface with ip %s on %s \n' % (
-            switch, ip, vrouter_name
-        )
 
         # Add BFD config to vrouter interface.
         if module.params['pn_bfd']:
@@ -417,13 +396,15 @@ def create_interface(module, switch, ip, port):
             cli += ' bfd-min-rx ' + module.params['pn_bfd_min_rx']
             cli += ' bfd-multiplier ' + module.params['pn_bfd_multiplier']
             run_cli(module, cli)
-            output += ' %s: Added BFD config to %s \n' % (switch, vrouter_name)
 
         CHANGED_FLAG.append(True)
-    else:
-        output += ' %s: Vrouter interface %s already exists on %s \n' % (
-            switch, ip, vrouter_name
-        )
+
+    output += ' %s: Added vrouter interface with ip %s on %s \n' % (
+        switch, ip, vrouter_name
+    )
+    if module.params['pn_bfd']:
+        output += ' %s: Added BFD configuration to %s \n' % (switch,
+                                                             vrouter_name)
 
     return output
 
@@ -485,8 +466,7 @@ def assign_loopback_ip(module, loopback_address):
 
     cli = pn_cli(module)
     clicopy = cli
-    switch_list = list(module.params['pn_spine_list'])
-    switch_list += module.params['pn_leaf_list']
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
 
     vrouter_count = 1
     for switch in switch_list:
@@ -504,19 +484,12 @@ def assign_loopback_ip(module, loopback_address):
             cli += vrouter
             cli += ' ip ' + ip
             run_cli(module, cli)
-            output += ' %s: Added loopback ip %s to %s \n' % (
-                switch, ip, vrouter
-            )
             CHANGED_FLAG.append(True)
-        else:
-            output += ' %s: Loopback ip %s for %s already exists \n' % (
-                switch, ip, vrouter
-            )
 
+        output += ' %s: Added loopback ip %s to %s \n' % (switch, ip, vrouter)
         vrouter_count += 1
 
     return output
-
 
 def auto_configure_link_ips(module):
     """
@@ -526,7 +499,6 @@ def auto_configure_link_ips(module):
     """
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
-    fabric_loopback = module.params['pn_assign_loopback']
     supernet = module.params['pn_supernet']
     output = ''
 
@@ -591,14 +563,13 @@ def auto_configure_link_ips(module):
                 ip_count = 0
                 diff = 32 - int(supernet)
                 count = (1 << diff) - 4
-                if count > 0:
-                    while ip_count < count:
-                        available_ips.pop(0)
-                        ip_count += 1
+                while ip_count < count:
+                    available_ips.pop(0)
+                    ip_count += 1
 
-    if fabric_loopback:
-        # Assign loopback ip to vrouters.
-        output += assign_loopback_ip(module, module.params['pn_loopback_ip'])
+
+    # Assign loopback ip to vrouters.
+    output += assign_loopback_ip(module, module.params['pn_loopback_ip'])
 
     for switch in switch_names:
         # Enable auto trunk.
@@ -620,7 +591,6 @@ def main():
             pn_leaf_list=dict(required=False, type='list'),
             pn_update_fabric_to_inband=dict(required=False, type='bool',
                                             default=False),
-            pn_assign_loopback=dict(required=False, type='bool', default=False),
             pn_loopback_ip=dict(required=False, type='str',
                                 default='109.109.109.0/24'),
             pn_bfd=dict(required=False, type='bool', default=False),
@@ -668,7 +638,5 @@ def main():
         task='Configure L3 ZTP'
     )
 
-
 if __name__ == '__main__':
     main()
-
