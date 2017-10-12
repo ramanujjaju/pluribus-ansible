@@ -26,16 +26,17 @@ DOCUMENTATION = """
 ---
 module: pn_ztp_l3_links
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: CLI command to configure L3 zero touch provisioning.
+short_description: CLI command to configure ZTP for Layer3 fabric.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
-    network automatically, without manual intervention. It configures link ips.
+    network automatically, without manual intervention. For layer3 fabric,
+    it creates vrouters and configures vrouter interfaces (link IPs).
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -107,7 +108,7 @@ options:
 
 EXAMPLES = """
 - name: Zero Touch Provisioning - Layer3 setup
-  pn_l3_ztp:
+  pn_ztp_l3_links:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
     pn_net_address: '192.168.0.1'
@@ -189,9 +190,9 @@ def run_cli(module, cli):
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
-            task='CLI commands to configure L3 zero touch provisioning',
+            task='Configure L3 ZTP',
             msg='L3 ZTP configuration failed',
             changed=False
         )
@@ -222,7 +223,7 @@ def modify_stp(module, modify_flag):
             if 'Success' in run_cli(module, cli):
                 CHANGED_FLAG.append(True)
 
-        output += ' %s: STP is already enabled \n' % switch
+        output += ' %s: STP enabled \n' % switch
 
     return output
 
@@ -249,7 +250,7 @@ def update_fabric_network_to_inband(module):
             if 'Success' in run_cli(module, cli):
                 CHANGED_FLAG.append(True)
 
-        output += ' %s: Fabric network is already in in-band \n' % switch
+        output += ' %s: Updated fabric network to in-band \n' % switch
 
     return output
 
@@ -345,11 +346,11 @@ def create_vrouter(module, switch, vnet_name):
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
-        cli += ' router-type hardware'
+        cli += ' router-type hardware '
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
 
-    return ' %s: Vrouter with name %s already exists \n' % (switch, vrouter_name)
+    return ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
 
 
 def create_interface(module, switch, ip, port):
@@ -491,6 +492,7 @@ def assign_loopback_ip(module, loopback_address):
 
     return output
 
+
 def auto_configure_link_ips(module):
     """
     Method to auto configure link IPs for layer3 fabric.
@@ -622,8 +624,8 @@ def main():
         for line in message_string.splitlines():
             if replace_string in line:
                 json_msg = {
-                    'switch' : switch,
-                    'output' : (line.replace(replace_string, '')).strip()
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
                 }
                 results.append(json_msg)
 
@@ -640,3 +642,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -1,9 +1,9 @@
 ---
 
 
- This task is to accept eula.
- It uses pn_eula_accept.py module from library/ directory.
- pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# This task is to accept eula.
+# It uses pn_eula_accept.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: Zero Touch Provisioning - Eula accept
   hosts: localhost
 

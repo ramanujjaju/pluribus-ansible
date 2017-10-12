@@ -1,0 +1,88 @@
+#L3 VRRP OSPF
+---
+
+
+
+- name: Configure L3 VRRP with OSPF
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+#  vars:
+#  - csv_file: /etc/ansible/vrrp.csv
+
+  tasks:
+    # This task is to configure VRRP for Layer 3 fabric.
+    # It takes required VRRP config data from csv file.
+    # It uses pn_l3_vrrp.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    - name: Configure L3 vrrp
+      pn_ztp_l3_vrrp:
+        pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # Csv file containing L3 vrrp data.
+        pn_pim_ssm: True                 # Variable to specify pim_ssm for ospf
+        pn_ospf_redistribute: 'connected'       # Variable to configure ospf redistribute
+      register: vrrp_out                        # Variable to hold/register output of the above tasks.
+      until:  vrrp_out.failed != true           # If error pops up it will retry the code
+      retries: 3                                # This is the retries count
+      delay: 1
+
+    - pause:
+        seconds: 2                              # Pause playbook execution for specified amount of time.
+
+
+    # This task is to configure ZTP for layer3 fabric.
+    # It uses pn_l3_ztp.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    # If the tasks fails then it will retry as specified by retries count.
+    - name: Auto configure link IPs
+      pn_ztp_l3_links:
+        pn_cliusername: "{{ USERNAME }}"                # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"                # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_net_address: "172.168.1.0"          # Network address required to calculate link IPs for layer3 fabric.
+        pn_cidr: "24"                        # Subnet mask required to calculate link IPs for layer3 fabric.
+        pn_supernet: "30"                # Supernet mask required to calculate link IPs for layer3 fabric.
+        pn_loopback_ip: "109.109.109.0/24"          # Loopback ip starting value for vrouters. Default: 109.109.109.0/24.
+        pn_bfd: True                          # Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
+        pn_bfd_min_rx: 200           # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
+        pn_bfd_multiplier: 3    # BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.
+        pn_update_fabric_to_inband: False  # Flag to indicate if fabric network should be updated to in-band. Default: False.
+        pn_stp: True                          # Flag to enable STP (spanning tree protocol). Default: False.
+      register: ztp_l3_out                              # Variable to hold/register output of the above tasks.
+      until:  ztp_l3_out.failed != true                 # If error pops up it will retry the code
+      retries: 3                                        # This is the retries count
+      delay: 1
+
+    - pause:
+        seconds: 2                                      # Pause playbook execution for specified amount of time.
+
+    # This task is to configure OSPF.
+    # It uses pn_ebgp_ospf.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    - name: Configure OSPF
+      pn_ztp_bgp_ospf:
+        pn_cliusername: "{{ USERNAME }}"                   # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"                   # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] }}"             # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"               # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_bfd: True                             # Indicate if BFD config should be added to eBGP. Default: False.
+        pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
+        pn_ospf_area_id: "0"           # Area id to configure for ospf. Default: 0
+        pn_iospf_ip_range: "75.75.75.0/24"       # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
+        pn_iospf_vlan: "4040"                  # Vlan for creating the interfaces between leaf clusters. Default:'4040'
+        pn_ospf_redistribute: "connected"      # Variable to configure ospf redistribute 
+        pn_pim_ssm: True                       # pim-ssm variable for configuration
+        pn_area_configure_flag: "singlearea"                   # Varible to configure area choices=['singlearea', 'dualarea', 'multiarea'], default='singlearea'
+      register: ospf_out                                   # Variable to hold/register output of the above tasks.
+      until: ospf_out.failed != true                       # If the above code fails it will retry the code
+      retries: 3                                           # This is the retries count
+      delay: 1
+
+    - pause:
+        seconds: 2                                         # Pause playbook execution for specified amount of time.

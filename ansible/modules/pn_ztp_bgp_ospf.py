@@ -24,7 +24,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_ztp_ebgp_ospf
+module: pn_ztp_bgp_ospf
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: Module to configure eBGP/OSPF.
 description: It performs following steps:
@@ -120,8 +120,8 @@ options:
 """
 
 EXAMPLES = """
-- name: Configure OSPF
-  pn_ebgp_ospf:
+- name: Configure eBGP/OSPF
+  pn_ztp_bgp_ospf:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
     pn_spine_list: "{{ groups['spine'] }}"
@@ -771,21 +771,21 @@ def find_area_id_leaf_switches(module):
     elif area_configure_flag == 'multiarea':
         cli += ' cluster-show format name no-show-headers'
         cluster_list = run_cli(module, cli).split()
-    
+
         if 'Success' not in cluster_list:
             for cluster in cluster_list:
                 cli = clicopy
                 cli += ' cluster-show name %s' % cluster
                 cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
                 cluster_nodes = run_cli(module, cli).split()
-    
+
                 if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
                     dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
                     dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
                     ospf_area_id += 1
                     cluster_leaf_list.append(cluster_nodes[0])
                     cluster_leaf_list.append(cluster_nodes[1])
-    
+
         non_clustered_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
         for leaf in non_clustered_leaf_list:
             ospf_area_id += 1
@@ -925,13 +925,14 @@ def add_ospf_redistribute(module, vrouter_names):
     """
     global CHANGED_FLAG
     output = ''
+    pn_ospf_redistribute = module.params['pn_ospf_redistribute']
     cli = pn_cli(module)
     clicopy = cli
 
     for vrouter in vrouter_names:
         cli = clicopy
         cli += ' vrouter-modify name %s' % vrouter
-        cli += ' ospf-redistribute static,connected'
+        cli += ' ospf-redistribute %s' % pn_ospf_redistribute
         if 'Success' in run_cli(module, cli):
             cli = clicopy
             cli += ' vrouter-show name ' + vrouter
@@ -959,6 +960,7 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     global CHANGED_FLAG
     output = ''
     vlan_id = module.params['pn_iospf_vlan']
+    pim_ssm = module.params['pn_pim_ssm']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -985,9 +987,14 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
 
     if vrouter not in existing_vrouter_interface:
         cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
-            vrouter, interface_ip, vlan_id
-        )
+        if pim_ssm == True:
+            cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s  pim-cluster ' % (
+                vrouter, interface_ip, vlan_id
+            )
+        else:
+            cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
+                vrouter, interface_ip, vlan_id
+            )
         run_cli(module, cli)
         output += ' %s: Added vrouter interface with ip %s on %s \n' % (
             switch_name, interface_ip, vrouter
@@ -1089,6 +1096,11 @@ def main():
                                      choices=['none', 'static', 'connected',
                                               'rip', 'ospf'],
                                      default='connected'),
+            pn_ospf_redistribute=dict(required=False, type='str',
+                                     choices=['none', 'static', 'connected',
+                                              'rip', 'ospf'],
+                                     default='none'),
+
             pn_bgp_maxpath=dict(required=False, type='str', default='16'),
             pn_bfd=dict(required=False, type='bool', default=False),
             pn_ibgp_ip_range=dict(required=False, type='str',
@@ -1100,6 +1112,7 @@ def main():
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_routing_protocol=dict(required=False, type='str',
                                      choices=['ebgp', 'ospf'], default='ebgp'),
+            pn_pim_ssm=dict(required=False, type='bool'),
             pn_area_configure_flag=dict(required=False, type='str',
                                         choices=['singlearea', 'dualarea', 'multiarea'], default='singlearea'),
         )
