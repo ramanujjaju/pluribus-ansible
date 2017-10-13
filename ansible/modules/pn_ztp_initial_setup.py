@@ -456,9 +456,6 @@ def toggle_40g_local(module):
         ports_40g = ports_40g.split()
         ports_to_modify = list(set(ports_40g) - set(local_ports))
         for port in ports_to_modify:
-            splitter_40g_ports.append(range(int(port), int(port)+4))
-
-        for port in ports_to_modify:
             next_port = str(int(port) + 1)
             cli = clicopy
             cli += ' switch-local'
@@ -487,6 +484,8 @@ def toggle_40g_local(module):
                 cli += ' enable '
                 output += 'port range_port ' + range_port + '  enabled'
                 output += run_cli(module, cli)
+
+                splitter_40g_ports.append(range(int(port), int(port)+4))
 
         time.sleep(10)
 

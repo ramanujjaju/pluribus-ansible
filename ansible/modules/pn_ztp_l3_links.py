@@ -377,11 +377,21 @@ def create_interface(module, switch, ip, port):
     existing_vrouter = list(set(existing_vrouter))
 
     if vrouter_name not in existing_vrouter:
+        # Disable l3-port before creating vrouter interface on it
+        cli = clicopy
+        cli += ' switch %s port-config-modify port %s disable' % (switch, port)
+        run_cli(module, cli)
+
         # Add vrouter interface.
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip
         cli += ' l3-port ' + port
+        run_cli(module, cli)
+
+        # Enable l3-port after creating vrouter interface on it
+        cli = clicopy
+        cli += ' switch %s port-config-modify port %s enable' % (switch, port)
         run_cli(module, cli)
 
         # Add BFD config to vrouter interface.
