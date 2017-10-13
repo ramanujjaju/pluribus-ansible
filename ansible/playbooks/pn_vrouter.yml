@@ -1,0 +1,72 @@
+---
+- name: vrouter modules
+  hosts: spine[0]
+
+  tasks:
+    - name: Create a vrouter
+      pn_vrouter:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #vRouter configuration command: create/delete/modify.
+        pn_name: "spine1-vrouter"                       #Specify the name of the vRouter.
+        pn_vnet: "ansible-test-global"                       #Specify the name of the vnet. Required for create.
+        pn_router_type: "hardware"                      #Specify if the vRouter uses software or hardware.
+        #pn_vnet_service_type:                          #Specify the type of vnet service: shared/dedicated.
+        #pn_service_state:                              #Enable/Disable vRouter service.Enabled by default.
+        #pn_shared_vnet_mgr:                            #vnet-manager to share with if shared service.
+        #pn_location:                                   #Location of the service.
+        #pn_storage_pool:                               #Storage pool assigned to the service.
+        pn_hw_vrrp_id: "19"                             #Specify the VRRP ID for the vrouter.
+        #pn_router_id: "1.1.1.1"                       #Specify the vrouter IP address.
+        #pn_proto_multi:                                #Multicast protocol: none/dvmrp/pim-ssm.
+        #pn_bgp_as: "65000"                              #Specify the AS number for BGP.
+        #pn_bgp_redistribute: "static"                   #BGP route redistribution: none/static/connected/rip/ospf.
+        #pn_bgp_redist_static_metric:                   #Metric for redistributing BGP static routes.
+        #pn_bgp_redist_static_routemap:                 #Routemap for redistributing BGP static routes.
+        #pn_bgp_redist_connected_metric:                #Metric for redistributing BGP connected routes.
+        #pn_bgp_redist_connected_routemap:              #Routemap for redistributing BGP connected routes.
+        #pn_bgp_redist_rip_metric:                      #Metric for redistributing BGP RIP routes.
+        #pn_bgp_redist_ospf_metric:                     #Metric for redistributing BGP OSPF routes.
+        #pn_bgp_redist_ospf_routemap:                   #Routemap for redistributing BGP OSPF routes.
+        #pn_bgp_cluster_id:                             #IP address for BGP cluster ID.
+        #pn_bgp_max_paths:                              #Maximum BGP paths.
+        #pn_bgp_ibgp_multipath:                         #Number of iBGP multipath connections.
+        #pn_bgp_bestpath:                               #Best path for BGP.
+        #pn_bgp_dampening:                              #Dampening for BGP routes.
+        #pn_bgp_graceful_restart:                       #Restart BGP gracefully.
+        #pn_bgp_stalepath_time:                         #Interval before a BGP path becomes stale.
+        #pn_bgp_scantime:                               #BGP scanner interval(seconds) - default 60.
+        #pn_bgp_delayed_startup:                        #Delays forming peer adjacency on bootup.
+        #pn_bgp_keepalive_interval:                     #BGP Keepalive interval (seconds) - default 60.
+        #pn_bgp_holdtime:                               #BGP Holdtime (seconds) - default 180.
+        #pn_bgp_distance_internal:                      #BGP distance for routes internal to AS.
+        #pn_bgp_distance_external:                      #BGP distance for routes external to AS.
+        #pn_bgp_distance_local:                         #BGP distance for local routes.
+        #pn_rip_redistribute:                           #Redistribute RIP routes - none/static/connected/bgp/ospf.
+        #pn_ospf_redistribute:                          #Redistribute OSPF routes - none/static/connected/rip/bgp.
+        #pn_ospf_redist_static_metric:                  #Metric for OSPF redistribution of static routes.
+        #pn_ospf_redist_static_metric_type:             #Metric type for OSPF redistribution of static routes.
+        #pn_ospf_redist_static_routemap:                #Route map for OSPF redistribution of static routes.
+        #pn_ospf_redist_connected_metric:               #Metric for OSPF redistribution of connected routes.
+        #pn_ospf_redist_connected_metric_type:          #Metric type for OSPF redistribution of connected routes.
+        #pn_ospf_redist_connected_routemap:             #Route map for OSPF redistribution of connected routes.
+        #pn_ospf_redist_rip_metric:                     #Metric for OSPF redistribution of RIP routes.
+        #pn_ospf_redist_rip_metric_type:                #Metric type for OSPF redistribution of RIP routes.
+        #pn_ospf_redist_bgp_metric:                     #Metric for OSPF redistribution of BGP routes.
+        #pn_ospf_redist_bgp_metric_type:                #Metric type for OSPF redistribution of BGP routes.
+        #pn_ospf_redist_bgp_routemap:                   #Route map for OSPF redistribution of BGP routes.
+        #pn_ospf_distance_external:                     #OSPF distance for external routes.
+        #pn_ospf_distance_internal:                     #OSPF distance for inter-area routes.
+        #pn_ospf_distance_local:                        #OSPF distance for intra-area routes.
+        #pn_ospf_stub_router:                           #Advertise self as stub router temporary on startup.
+        #pn_ospf_stub_router_period:                    #Period to advertise self as stub router after startup.
+        #pn_ospf_bfd: true                              #Use BFD protocol for fault detection on all OSPF interfaces.
+        #pn_vrrp_track_port:                            #Track port for VRRP.
+        #pn_bgp_snmp: true                                       #Enable BGP SNMP MIB.
+        #pn_bgp_snmp_notif:                             #Enable BGP SNMP notifications.
+        #pn_ospf_snmp:                                  #Enable OSPF SNMP MIB.
+        #pn_ospf_snmp_notif:                            #Enable OSPF SNMP notifications.
+      register: output
+    - debug:
+        var: output

@@ -1,0 +1,33 @@
+---
+- name: vrouter interface  modules
+  hosts: spine[0]
+
+  tasks:
+    - name: Add a vrouter interface
+      pn_vrouter_iface:
+        pn_cliusername: "{{ USERNAME }}"                 #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                    #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the cli on.
+        pn_action: "add"                                #vRouter interface command - add/remove/modify.
+        pn_vrouter: "spine1-vrouter"            #Name of the vrouter.
+        pn_vlan: "101"                                  #Interface vlan.
+        #pn_vlan_type:                                  #Interface vlan type - public/private.
+        pn_interface_ip: "101.101.101.2/24"                     #IP address for the interface in x.x.x.x/n format.
+        #pn_assignment:                                 #Type of IP address assignment - none/dhcp/dhcpv6/autov6.
+        #pn_vnet:                                       #Interface VLAN VNET.
+        pn_interface: data                                      #Interface type - mgmt/data/span.
+        #pn_alias:                                      #Specify an alias name for the interface.
+        #pn_exclusive:                                  #Specify if interface is exclusive to the configuration.
+        #pn_nic_state:                                  #NIC config - enable/disable.
+        #pn_vrrp_primary:                               #VRRP primary interface.
+        #pn_vrrp_id:                                    #ID assigned to VRRP interface.
+        #pn_vrrp_priority:                              #VRRP priority: 1(lowest)-255(highest).
+        #pn_vrrp_adv_int:                               #VRRP advertisement interval in ms: 30-40950, default 1000.
+        #pn_l3port:                                     #Layer 3 port for the interface.
+        #pn_secondary_macs:                             #Secondary MAC address for the interface.
+        #pn_nic:                                        #Virtual NIC assigned to interface. Required for delete/modify.
+        #pn_mtu:                                        #Interface MTU.
+        #pn_if_nat_realm:                               #NAT interface realm - internal/external.
+      register: output
+    - debug:
+        var: output
