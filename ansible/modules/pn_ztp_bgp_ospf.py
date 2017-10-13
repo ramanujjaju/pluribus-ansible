@@ -988,7 +988,7 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     if vrouter not in existing_vrouter_interface:
         cli = clicopy
         if pim_ssm == True:
-            cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s  pim-cluster ' % (
+            cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s pim-cluster ' % (
                 vrouter, interface_ip, vlan_id
             )
         else:

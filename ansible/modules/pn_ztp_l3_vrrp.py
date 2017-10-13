@@ -189,7 +189,7 @@ def create_vlan(module, vlan_id, switch):
         return ''
 
 
-def create_vrouter(module, switch, vrrp_id, vnet_name, pim_ssm):
+def create_vrouter(module, switch, vrrp_id, vnet_name):
     """
     Method to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
@@ -201,10 +201,18 @@ def create_vrouter(module, switch, vrrp_id, vnet_name, pim_ssm):
     global CHANGED_FLAG
     output = ''
     vrouter_name = switch + '-vrouter'
+
     pn_ospf_redistribute = module.params['pn_ospf_redistribute']
+    pn_pim_ssm = module.params['pn_pim_ssm']
+
     cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
+
+    if pn_pim_ssm == True:
+        pim_ssm = 'pim-ssm'
+    else:
+        pim_ssm = 'none'
 
     # Check if vrouter already exists
     cli += ' vrouter-show format name no-show-headers '
@@ -251,7 +259,6 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
     """
     global CHANGED_FLAG
     vrouter_name = get_vrouter_name(module, switch)
-    pn_pim_ssm = module.params['pn_pim_ssm']
     ip_addr = ip.split('.')
     fourth_octet = ip_addr[3].split('/')
     subnet = fourth_octet[1]
@@ -272,10 +279,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
         cli += ' switch ' + switch
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip2
-        if pn_pim_ssm == True:
-            cli += ' vlan %s if data pim-cluster ' % vlan_id
-        else:
-            cli += ' vlan %s if data ' % vlan_id
+        cli += ' vlan %s if data ' % vlan_id
         run_cli(module, cli)
         output = ' %s: Added vrouter interface with ip %s to %s \n' % (
             switch, ip2, vrouter_name
@@ -305,10 +309,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
         cli += ' switch ' + switch
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip_vip
-        if pn_pim_ssm == True:
-            cli += ' vlan %s if data pim-cluster vrrp-id %s ' % (vlan_id, vrrp_id)
-        else:
-            cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
+        cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
         cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
                                                        vrrp_priority)
         run_cli(module, cli)
@@ -346,7 +347,7 @@ def create_cluster(module, switch, name, node1, node2):
         return ''
 
 
-def create_vrouter_without_vrrp(module, switch, vnet_name, pim_ssm):
+def create_vrouter_without_vrrp(module, switch, vnet_name):
     """
     Method to create vrouter without assigning vrrp id to it.
     :param module: The Ansible module to fetch input parameters.
@@ -356,7 +357,15 @@ def create_vrouter_without_vrrp(module, switch, vnet_name, pim_ssm):
     """
     global CHANGED_FLAG
     vrouter_name = switch + '-vrouter'
+
     pn_ospf_redistribute = module.params['pn_ospf_redistribute']
+    pn_pim_ssm = module.params['pn_pim_ssm']
+
+    if pn_pim_ssm == True:
+        pim_ssm = 'pim-ssm'
+    else:
+        pim_ssm = 'none'
+
     cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
@@ -434,7 +443,6 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     """
     node1 = switch_list[0]
     node2 = switch_list[1]
-    pn_pim_ssm = module.params['pn_pim_ssm']
     name = node1 + '-to-' + node2 + '-cluster'
     host_count = 1
 
@@ -443,13 +451,8 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
 
     vnet_name = get_global_vnet_name(module)
 
-    if pn_pim_ssm == True:
-        pim_ssm = 'pim-ssm'
-    else:
-        pim_ssm = 'none'
-        
     for switch in switch_list:
-        output += create_vrouter(module, switch, vrrp_id, vnet_name, pim_ssm)
+        output += create_vrouter(module, switch, vrrp_id, vnet_name)
 
     for switch in switch_list:
         host_count += 1
@@ -471,13 +474,8 @@ def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip,
     :param non_cluster_leaf: Name of non-clustered leaf switch.
     :return: Output string of configuration.
     """
-    pn_pim_ssm = module.params['pn_pim_ssm']
     vnet_name = get_global_vnet_name(module)
-    if pn_pim_ssm == True:
-        pim_ssm = 'pim-ssm'
-    else:
-        pim_ssm = 'none'
-    output = create_vrouter_without_vrrp(module, non_cluster_leaf, vnet_name, pim_ssm)
+    output = create_vrouter_without_vrrp(module, non_cluster_leaf, vnet_name)
     output += create_vlan(module, vlan_id, non_cluster_leaf)
     output += configure_vrrp_for_non_cluster_leafs(module, ip,
                                                    non_cluster_leaf, vlan_id)
@@ -492,14 +490,9 @@ def configure_vrrp(module, csv_data):
     :return: Output string of configuration.
     """
     output = ''
-    pn_pim_ssm = module.params['pn_pim_ssm']
     vnet_name = get_global_vnet_name(module)
-    if pn_pim_ssm == True:
-        pim_ssm = 'pim-ssm'
-    else:
-        pim_ssm = 'none'
     for switch in module.params['pn_spine_list']:
-        output += create_vrouter_without_vrrp(module, switch, vnet_name, pim_ssm)
+        output += create_vrouter_without_vrrp(module, switch, vnet_name)
 
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')

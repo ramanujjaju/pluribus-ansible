@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Zero Touch Provisioning (ZTP) """
+""" PN Fabric Creation """
 
 #
 # This file is part of Ansible
@@ -18,15 +18,16 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ansible.module_utils.basic import AnsibleModule
 import shlex
 import time
 
+from ansible.module_utils.basic import AnsibleModule
+
 DOCUMENTATION = """
 ---
-module: pn_ztp_initial_setup
+module: pn_fabric_creation
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: CLI command to do zero touch provisioning.
+short_description: Module to perform fabric creation/join.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention.
@@ -37,10 +38,10 @@ description:
         - Enable STP
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -144,13 +145,13 @@ options:
       description:
         - Flag to enable STP at the end.
       required: False
-      default: False
+      default: True
       type: bool
 """
 
 EXAMPLES = """
-- name: Disable STP, enable ports and create/join fabric
-    pn_initial_ztp:
+- name: Fabric creation/join
+    pn_fabric_creation:
       pn_cliusername: "{{ USERNAME }}"
       pn_clipassword: "{{ PASSWORD }}"
       pn_fabric_name: 'ztp-fabric'
@@ -160,18 +161,34 @@ EXAMPLES = """
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
 
 CHANGED_FLAG = []
@@ -202,7 +219,6 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
-    task = 'Disable STP, enable ports and create/join fabric'
     results = []
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
@@ -212,39 +228,20 @@ def run_cli(module, cli):
     if err:
         json_msg = {
             'switch': module.params['pn_current_switch'],
-            'output': u'Operation Failed: {}'.format(str(cli))
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
         }
         results.append(json_msg)
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
-            task=task,
-            stderr=err.strip(),
-            msg='Initial ZTP configuration failed',
+            task='Fabric creation',
+            msg='Fabric creation failed',
             changed=False
         )
     else:
         return 'Success'
-
-
-def update_switch_names(module, switch_name):
-    """
-    Method to update switch names.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch_name: Name to assign to the switch.
-    :return: String describing switch name got modified or not.
-    """
-    cli = pn_cli(module)
-    cli += ' switch-setup-show format switch-name '
-    if switch_name in run_cli(module, cli).split()[1]:
-        return ' Switch name is same as hostname! '
-    else:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify switch-name ' + switch_name
-        run_cli(module, cli)
-        return ' Updated switch name to match hostname! '
 
 
 def make_switch_setup_static(module):
@@ -284,6 +281,24 @@ def make_switch_setup_static(module):
     clicopy = cli
     if clicopy.split('switch-setup-modify')[1] != ' ':
         run_cli(module, cli)
+
+
+def update_switch_names(module, switch_name):
+    """
+    Method to update switch names.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: Name to assign to the switch.
+    :return: String describing switch name got modified or not.
+    """
+    cli = pn_cli(module)
+    cli += ' switch-setup-show format switch-name '
+    if switch_name == run_cli(module, cli).split()[1]:
+        return ' Switch name is same as hostname! '
+    else:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify switch-name ' + switch_name
+        run_cli(module, cli)
+        return ' Updated switch name to match hostname! '
 
 
 def modify_stp_local(module, modify_flag):
@@ -415,7 +430,6 @@ def enable_web_api(module):
     cli += ' admin-service-modify web if mgmt '
     run_cli(module, cli)
 
-
 def toggle_40g_local(module):
     """
     Method to toggle 40g ports to 10g ports.
@@ -423,10 +437,16 @@ def toggle_40g_local(module):
     :return: The output messages for assignment.
     """
     output = ''
+    splitter_40g_ports = []
     cli = pn_cli(module)
     clicopy = cli
     cli += ' switch-local lldp-show format local-port no-show-headers '
     local_ports = run_cli(module, cli).split()
+
+    cli = clicopy
+    cli += ' switch-local port-config-show format port no-show-headers '
+    max_ports = run_cli(module, cli).split()
+
 
     cli = clicopy
     cli += ' switch-local port-config-show speed 40g '
@@ -435,6 +455,8 @@ def toggle_40g_local(module):
     if len(ports_40g) > 0 and ports_40g != 'Success':
         ports_40g = ports_40g.split()
         ports_to_modify = list(set(ports_40g) - set(local_ports))
+        for port in ports_to_modify:
+            splitter_40g_ports.append(range(int(port), int(port)+4))
 
         for port in ports_to_modify:
             next_port = str(int(port) + 1)
@@ -468,8 +490,35 @@ def toggle_40g_local(module):
 
         time.sleep(10)
 
-    return output
+    cli = clicopy
+    cli += ' switch-local lldp-show format local-port no-show-headers '
+    lldp_local_ports = run_cli(module, cli).split()
+    active_40g_ports = list(set(lldp_local_ports) - set(local_ports))
 
+    if splitter_40g_ports:
+        for ports_list in splitter_40g_ports[:]:
+            for port in active_40g_ports:
+                if int(port) in ports_list:
+                    if ports_list in splitter_40g_ports:
+                        splitter_40g_ports.remove(ports_list)
+
+    for port_list in splitter_40g_ports:
+        first_port = port_list[0]
+        for port in port_list:
+            if int(port) > len(max_ports):
+                continue
+            else:
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % port
+                cli += ' disable '
+                output += run_cli(module, cli)
+                output += 'port ' + str(port) + '  disabled'
+        cli = clicopy
+        cli += ' switch-local port-config-modify port %s ' % first_port
+        cli += ' speed 40g '
+        output += run_cli(module, cli)
+        output += 'port ' + str(first_port) + ' is now 40g'
+    return output
 
 def assign_inband_ip(module):
     """
@@ -511,9 +560,8 @@ def assign_inband_ip(module):
             cli += ' in-band-ip ' + ip
             run_cli(module, cli)
             CHANGED_FLAG.append(True)
-            return 'Assigned in-band ip ' + ip
-        else:
-            return 'In-band ip %s has been already assigned' % ip
+
+        return 'Assigned in-band ip ' + ip
 
     return 'Could not assign in-band ip'
 
@@ -543,7 +591,7 @@ def main():
         pn_domain_name=dict(required=False, type='str'),
         pn_ntp_server=dict(required=False, type='str'),
         pn_web_api=dict(type='bool', default=True),
-        pn_stp=dict(required=False, type='bool', default=False), )
+        pn_stp=dict(required=False, type='bool', default=True), )
     )
 
     fabric_name = module.params['pn_fabric_name']
@@ -551,97 +599,59 @@ def main():
     control_network = module.params['pn_fabric_control_network']
     toggle_40g_flag = module.params['pn_toggle_40g']
     current_switch = module.params['pn_current_switch']
-    message = ''
     results = []
     global CHANGED_FLAG
-    CHANGED_FLAG = []
-
-    # Update switch names to match host names from hosts file
-    if 'Updated' in update_switch_names(module, current_switch):
-        CHANGED_FLAG.append(True)
 
     # Make switch setup static
     if module.params['pn_static_setup']:
         make_switch_setup_static(module)
 
-    # Create/join fabric
-    if 'already in the fabric' in create_or_join_fabric(module, fabric_name,
-                                                        fabric_network):
-        json_msg = {
-            'switch': current_switch,
-            'output': u'Already a part of fabric {}'.format(fabric_name)
-        }
-        message += ' %s: Already a part of fabric %s \n' % (current_switch,
-                                                            fabric_name)
-    else:
-        json_msg = {
-            'switch': current_switch,
-            'output': u'Joined fabric {}'.format(fabric_name)
-        }
-        message += ' %s: Joined fabric %s \n' % (current_switch, fabric_name)
+    # Update switch names to match host names from hosts file
+    if 'Updated' in update_switch_names(module, current_switch):
         CHANGED_FLAG.append(True)
 
-    results.append(json_msg)
+    # Create/join fabric
+    if 'already in the fabric' not in create_or_join_fabric(module, fabric_name,
+                                                            fabric_network):
+        CHANGED_FLAG.append(True)
+
+    results.append({
+        'switch': current_switch,
+        'output': u"Joined fabric '{}'".format(fabric_name)
+    })
 
     # Configure fabric control network to either mgmt or in-band
     if 'Success' in configure_control_network(module, control_network):
-        json_msg = {
-            'switch': current_switch,
-            'output': u'Already a part of fabric {}'.format(control_network)
-        }
-        message += ' %s: Configured fabric control network to %s \n' % (
-            current_switch, control_network
-        )
         CHANGED_FLAG.append(True)
-    else:
-        json_msg = {
-            'switch': current_switch,
-            'output': u'Fabric is already in {} control network'.format(
-                control_network)
-        }
-        message += ' %s: Fabric is already in %s control network \n' % (
-            current_switch, control_network
-        )
 
-    results.append(json_msg)
+    results.append({
+        'switch': current_switch,
+        'output': u"Configured fabric control network to '{}'".format(
+            control_network
+        )
+    })
 
     # Enable web api if flag is True
     if module.params['pn_web_api']:
         enable_web_api(module)
 
-    # Disable STP
-    if 'Success' in modify_stp_local(module, 'disable'):
-        json_msg = {
-            'switch': current_switch,
-            'output': 'STP disabled'
-        }
-        message += ' %s: STP disabled \n' % current_switch
+    # Enable STP
+    if 'Success' in modify_stp_local(module, 'enable'):
         CHANGED_FLAG.append(True)
-    else:
-        json_msg = {
-            'switch': current_switch,
-            'output': 'STP is already disabled'
-        }
-        message += ' %s: STP is already disabled \n' % current_switch
 
-    results.append(json_msg)
+    results.append({
+        'switch': current_switch,
+        'output': 'STP enabled'
+    })
 
     # Enable ports
     if enable_ports(module):
-        json_msg = {
-            'switch': current_switch,
-            'output': 'Ports enabled'
-        }
-        message += ' %s: Ports enabled \n' % current_switch
         CHANGED_FLAG.append(True)
-    else:
-        json_msg = {
-            'switch': current_switch,
-            'output': 'Ports are already enabled'
-        }
-        message += ' %s: Ports are already enabled \n' % current_switch
 
-    results.append(json_msg)
+    results.append({
+        'switch': current_switch,
+        'output': 'Ports enabled'
+    })
 
     # Toggle 40g ports to 10g
     if toggle_40g_flag:
@@ -650,7 +660,6 @@ def main():
                 'switch': current_switch,
                 'output': 'Toggled 40G ports to 10G'
             }
-            message += ' %s: Toggled 40G ports to 10G \n' % current_switch
             CHANGED_FLAG.append(True)
             results.append(json_msg)
 
@@ -660,34 +669,25 @@ def main():
         'switch': current_switch,
         'output': out
     }
-    message += ' %s: %s \n' % (current_switch, out)
     results.append(json_msg)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
         if 'Success' in modify_stp_local(module, 'enable'):
-            json_msg = {
-                'switch': current_switch,
-                'output': 'STP enabled'
-            }
-            message += ' %s: STP enabled \n' % current_switch
             CHANGED_FLAG.append(True)
-        else:
-            json_msg = {
-                'switch': current_switch,
-                'output': 'STP is already enabled'
-            }
-            message += ' %s: STP is already enabled \n' % current_switch
 
-        results.append(json_msg)
+        results.append({
+            'switch': current_switch,
+            'output': 'STP enabled'
+        })
 
     # Exit the module and return the required JSON
     module.exit_json(
         unreachable=False,
-        msg='Initial ZTP configuration executed successfully',
+        msg='Fabric creation succeeded',
         summary=results,
         exception='',
-        task='Disable STP, enable ports and create/join fabric',
+        task='Fabric creation',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )

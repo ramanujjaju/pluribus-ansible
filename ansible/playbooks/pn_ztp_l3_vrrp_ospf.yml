@@ -37,7 +37,7 @@
       pn_ztp_initial_setup:
         pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
-        pn_fabric_name: 'verizon-bgp-fabric'           # Name of the fabric to create/join.
+        pn_fabric_name: 'ansible-ospf-fabric'           # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
@@ -48,7 +48,7 @@
         pn_static_setup: False                         # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
         pn_mgmt_ip_subnet: '16'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
-        pn_gateway_ip: '10.9.9.0'                      # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: '10.9.9.1'                      # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
         pn_dns_ip: '10.20.41.1'                        # Specify DNS-IP value to be assign if pn_static_setup is True.
         pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
         pn_domain_name: 'pluribusnetworks.com'         # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
@@ -118,7 +118,6 @@
         pn_net_address: '172.168.1.0'           # Network address required to calculate link IPs for layer3 fabric.
         pn_cidr: '24'                           # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet: '30'                       # Supernet mask required to calculate link IPs for layer3 fabric.
-        pn_assign_loopback: True                # Flag to indicate if loopback ips should be assigned to vrouters in layer3 fabric. Default: False.
         pn_loopback_ip: '109.109.109.0/24'      # Loopback ip value for vrouters in layer3 fabric. Default: 109.109.109.0/24.
         pn_bfd: True                            # Flag to indicate if BFD config should be added to vrouter interfaces in case of layer3 fabric. Default: False.
         pn_bfd_min_rx: 200                      # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
