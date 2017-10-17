@@ -243,8 +243,8 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
     return output
 
 
-def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
-                             ip_count, vrrp_priority):
+def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
+                             vrrp_priority, list_vips, list_ips):
     """
     Method to add vrouter interface and assign IP to it along with
     vrrp_id and vrrp_priority.
@@ -259,17 +259,10 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
     """
     global CHANGED_FLAG
     vrouter_name = get_vrouter_name(module, switch)
-    ip_addr = ip.split('.')
-    fourth_octet = ip_addr[3].split('/')
-    subnet = fourth_octet[1]
-
-    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
-    ip_vip = static_ip + '1' + '/' + subnet
-    ip2 = static_ip + ip_count + '/' + subnet
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-interface-show vlan %s ip %s ' % (vlan_id, ip2)
+    cli += ' vrouter-interface-show vlan %s ip %s ' % (vlan_id, list_ips[0])
     cli += ' format switch no-show-headers '
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
@@ -278,45 +271,51 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
         cli = clicopy
         cli += ' switch ' + switch
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
-        cli += ' ip ' + ip2
+        cli += ' ip ' + list_ips[0]
         cli += ' vlan %s if data ' % vlan_id
+        if module.params['pn_addr_type'] == 'ipv4_ipv6':
+            cli += ' ip2 ' + list_ips[1]
         run_cli(module, cli)
-        output = ' %s: Added vrouter interface with ip %s to %s \n' % (
-            switch, ip2, vrouter_name
+        output = ' %s: Added vrouter interface with ip %s' % (
+            switch, list_ips[0]
         )
+        if module.params['pn_addr_type'] == 'ipv4_ipv6':
+            output += ' ip2 %s' % list_ips[1]
+        output += ' to %s \n' % vrouter_name
         CHANGED_FLAG.append(True)
     else:
         output = ''
 
     cli = clicopy
     cli += ' vrouter-interface-show vrouter-name %s ip %s vlan %s ' % (
-        vrouter_name, ip2, vlan_id
+        vrouter_name, list_ips[0], vlan_id
     )
     cli += ' format nic no-show-headers '
     eth_port = run_cli(module, cli).split()
     eth_port.remove(vrouter_name)
 
-    cli = clicopy
-    cli += ' vrouter-interface-show vlan %s ip %s vrrp-primary %s ' % (
-        vlan_id, ip_vip, eth_port[0]
-    )
-    cli += ' format switch no-show-headers '
-    existing_vrouter = run_cli(module, cli).split()
-    existing_vrouter = list(set(existing_vrouter))
-
-    if vrouter_name not in existing_vrouter:
+    for ip_vip in list_vips:
         cli = clicopy
-        cli += ' switch ' + switch
-        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
-        cli += ' ip ' + ip_vip
-        cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
-        cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
-                                                       vrrp_priority)
-        run_cli(module, cli)
-        output += ' %s: Added vrouter interface with ip %s to %s \n' % (
-            switch, ip_vip, vrouter_name
+        cli += ' vrouter-interface-show vlan %s ip %s vrrp-primary %s ' % (
+            vlan_id, ip_vip, eth_port[0]
         )
-        CHANGED_FLAG.append(True)
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli).split()
+        existing_vrouter = list(set(existing_vrouter))
+    
+        if vrouter_name not in existing_vrouter:
+            cli = clicopy
+            cli += ' switch ' + switch
+            cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
+            cli += ' ip ' + ip_vip
+            cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
+            cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
+                                                           vrrp_priority)
+            run_cli(module, cli)
+            output += ' %s: Added vrouter interface with ip %s to %s \n' % (
+                switch, ip_vip, vrouter_name
+            )
+            CHANGED_FLAG.append(True)
 
     return output
 
@@ -429,7 +428,7 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
         return ''
 
 
-def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
+def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
                                           active_switch, vlan_id, switch_list):
     """
     Method to configure vrrp interfaces for clustered leaf switches.
@@ -445,6 +444,8 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     node2 = switch_list[1]
     name = node1 + '-to-' + node2 + '-cluster'
     host_count = 1
+    list_vips = []
+    addr_type = module.params['pn_addr_type']
 
     output = create_cluster(module, node2, name, node1, node2)
     output += create_vlan(module, vlan_id, node2)
@@ -454,12 +455,37 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     for switch in switch_list:
         output += create_vrouter(module, switch, vrrp_id, vnet_name)
 
+    list_vips.append(vrrp_ip)
+    ip_addr = vrrp_ip.split('.')
+    fourth_octet = ip_addr[3].split('/')
+    subnet_ipv4 = fourth_octet[1]
+    host_count_ipv4 = int(fourth_octet[0])
+    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+
+    if addr_type == 'ipv4_ipv6':
+        list_vips.append(vrrp_ipv6)
+        ipv6 = vrrp_ipv6.split('/')
+        subnet_ipv6 = ipv6[1]
+        ipv6 = ipv6[0]
+        ipv6 = ipv6.split(':')
+        if not ipv6[-1]:
+            ipv6[-1] = "0"
+        host_count_ipv6 = int(ipv6[-1], 16)
+
     for switch in switch_list:
-        host_count += 1
+        list_ips = []
+        host_count_ipv4 = host_count_ipv4 + 1
+        vrrp_ipv4 = static_ip + str(host_count_ipv4) + '/' + subnet_ipv4
+        list_ips.append(vrrp_ipv4)
+        if addr_type == 'ipv4_ipv6':
+            host_count_ipv6 = host_count_ipv6 + 1
+            ipv6[-1] = str(hex(host_count_ipv6)[2:])
+            vrrp_ipv6_ip = ':'.join(ipv6) + '/' + subnet_ipv6
+            list_ips.append(vrrp_ipv6_ip)
+
         vrrp_priority = '110' if switch == active_switch else '100'
-        output += create_vrouter_interface(module, switch, vrrp_ip, vlan_id,
-                                           vrrp_id, str(host_count),
-                                           vrrp_priority)
+        output += create_vrouter_interface(module, switch, vlan_id, vrrp_id,
+                                           vrrp_priority, list_vips, list_ips)
 
     return output
 
@@ -490,31 +516,35 @@ def configure_vrrp(module, csv_data):
     :return: Output string of configuration.
     """
     output = ''
+    vrrp_ipv6 = ''
     vnet_name = get_global_vnet_name(module)
     for switch in module.params['pn_spine_list']:
         output += create_vrouter_without_vrrp(module, switch, vnet_name)
 
-    csv_data = csv_data.replace(" ", "")
+    csv_data = csv_data.strip()
     csv_data_list = csv_data.split('\n')
     # Parse csv file data and configure VRRP.
     for row in csv_data_list:
+        row = row.strip()
         if row.startswith('#'):
             continue
         else:
             elements = row.split(',')
             elements = filter(None, elements)
             switch_list = []
-            vlan_id = elements[0].strip()
-            vrrp_ip = elements[1].strip()
-            leaf_switch_1 = elements[2].strip()
-            if len(elements) > 5:
-                leaf_switch_2 = elements[3].strip()
-                vrrp_id = elements[4].strip()
-                active_switch = elements[5].strip()
+            vlan_id = elements.pop(0).strip()
+            vrrp_ip = elements.pop(0).strip()
+            if module.params['pn_addr_type'] == 'ipv4_ipv6':
+                vrrp_ipv6 = elements.pop(0).strip()
+            leaf_switch_1 = elements.pop(0).strip()
+            if len(elements) > 2:
+                leaf_switch_2 = elements.pop(0).strip()
+                vrrp_id = elements.pop(0).strip()
+                active_switch = elements.pop(0).strip()
                 switch_list.append(leaf_switch_1)
                 switch_list.append(leaf_switch_2)
                 output += configure_vrrp_for_clustered_switches(module, vrrp_id,
-                                                                vrrp_ip,
+                                                                vrrp_ip, vrrp_ipv6,
                                                                 active_switch,
                                                                 vlan_id,
                                                                 switch_list)
@@ -552,6 +582,9 @@ def main():
                                      choices=['none', 'static', 'connected',
                                               'rip', 'ospf'],
                                      default='none'),
+            pn_addr_type=dict(required=False, type='str',
+                                     choices=['ipv4', 'ipv6', 'ipv4_ipv6'],
+                                     default='ipv4_ipv6'),
         )
     )
 

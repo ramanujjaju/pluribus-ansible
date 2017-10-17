@@ -803,6 +803,7 @@ def add_ospf_neighbor(module, dict_area_id):
     """
     global CHANGED_FLAG
     output = ''
+    addr_type = module.params['pn_addr_type']
     loopback_network = ''
     cli = pn_cli(module)
     clicopy = cli
@@ -858,19 +859,98 @@ def add_ospf_neighbor(module, dict_area_id):
             ip.remove(vrouter_spine)
             ip = ip[0]
 
-            ip = ip.split('.')
-            static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
-            static_part += str(ip[2]) + '.'
-            last_octet = str(ip[3]).split('/')
-            netmask = last_octet[1]
+            if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
+                ip = ip.split('.')
+                static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
+                static_part += str(ip[2]) + '.'
+                last_octet = str(ip[3]).split('/')
+                netmask = last_octet[1]
 
-            last_octet_ip_mod = int(last_octet[0]) % 4
-            ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
-            ospf_network = static_part + str(ospf_last_octet) + '/' + netmask
+                last_octet_ip_mod = int(last_octet[0]) % (1 << (32 - int(netmask)))
+                ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
+                ospf_network = static_part + str(ospf_last_octet) + '/' + netmask
 
-            leaf_last_octet = int(last_octet[0]) - 1
-            ip_leaf = static_part + str(leaf_last_octet)
-            ip_spine = static_part + last_octet[0]
+                leaf_last_octet = int(last_octet[0]) + 1
+                ip_leaf = static_part + str(leaf_last_octet)
+                ip_spine = static_part + last_octet[0]
+#            elif addr_type == 'ipv6':
+#                ip = ip.split('/')
+#                ip_spine = ip[0]
+#                netmask = ip[1]
+#                ip = ip[0]
+#                
+#                ip = ip.split(':')
+#                if not ip[-1]:
+#                    ip[-1] = '0'             
+#                #leaf_last_octet = hex(int(ip[-1], 16) + 1)[2:]
+#                last_octet_ipv6 = int(ip[-1], 16)
+#                last_octet_ipv6_mod = last_octet_ipv6 % (1 << (128 - int(netmask)))
+#                ospf_last_octet = hex(last_octet_ipv6 - last_octet_ipv6_mod)[2:]
+#                leaf_last_octet = hex(last_octet_ipv6 + 1)[2:]
+#                ip[-1] = str(leaf_last_octet)
+#                ip_leaf = ':'.join(ip)
+#                ip[-1] = str(ospf_last_octet)
+#                ospf_network = ':'.join(ip) + '/' + netmask
+
+            if addr_type == 'ipv4_ipv6':
+                cli = clicopy
+                cli += ' vrouter-interface-show vrouter-name %s l3-port %s' % (
+                         vrouter_spine, port
+                         )
+                cli += ' format ip2 no-show-headers'
+                ip2 = run_cli(module, cli).split()
+                ip2 = list(set(ip2))
+                ip2.remove(vrouter_spine)
+                ip_spine_ipv6 = ip2[0]
+                ip2 = ip2[0].split('/')
+                netmask_ipv6 = ip2[1]
+                ip2 = ip2[0]
+
+                ip2 = ip2.split(':')
+                if not ip2[-1]:
+                    ip2[-1] = '0'
+                leaf_last_octet = hex(int(ip2[-1], 16) + 1)[2:]
+                ip2[-1] = str(leaf_last_octet)
+                ip_leaf_ipv6 = ':'.join(ip2) + '/' + netmask_ipv6
+
+                cli = clicopy
+                cli += 'vrouter-interface-show vrouter-name %s' % vrouter_spine
+                cli += ' ip2 %s format nic no-show-headers ' % ip_spine_ipv6
+                nic = run_cli(module, cli).split()
+                nic = list(set(nic))
+                nic.remove(vrouter_spine)
+                nic = nic[0]
+
+                cli = clicopy
+                cli += 'vrouter-ospf6-show nic %s format switch no-show-headers ' % nic
+                ipv6_vrouter = run_cli(module, cli).split()
+
+                if vrouter_spine not in ipv6_vrouter:
+                    cli = clicopy
+                    cli += 'vrouter-ospf6-add vrouter-name %s nic %s ospf6-area 0.0.0.0 ' % (vrouter_spine, nic)
+                    run_cli(module, cli)
+                    output += ' %s: Added OSPF6 nic %s to %s \n' % (
+                        spine, nic, vrouter_spine
+                    )
+
+                cli = clicopy
+                cli += 'vrouter-interface-show vrouter-name %s ip2 %s format nic no-show-headers ' % (vrouter_hostname, ip_leaf_ipv6)
+                nic = run_cli(module, cli).split()
+                nic = list(set(nic))
+                nic.remove(vrouter_hostname)
+                nic = nic[0]
+
+                cli = clicopy
+                cli += 'vrouter-ospf6-show nic %s format switch no-show-headers ' % nic
+                ipv6_vrouter = run_cli(module, cli).split()
+
+                if vrouter_hostname not in ipv6_vrouter:
+                    cli = clicopy
+                    cli += 'vrouter-ospf6-add vrouter-name %s nic %s ospf6-area 0.0.0.0 ' % (vrouter_hostname, nic)
+                    run_cli(module, cli)
+                    output += ' %s: Added OSPF6 nic %s to %s \n' % (
+                        spine, nic, vrouter_hostname
+                    )
 
             cli = clicopy
             cli += ' vrouter-ospf-show'
@@ -884,6 +964,9 @@ def add_ospf_neighbor(module, dict_area_id):
                     output += configure_ospf_bfd(module, vrouter_spine,
                                                  ip_spine)
 
+                ospf_network_list = []
+                ospf_network_list.append(ospf_network)
+                                     
                 cli = clicopy
                 cli += ' vrouter-ospf-add vrouter-name ' + vrouter_spine
                 cli += ' network %s ospf-area %s' % (ospf_network,
@@ -905,7 +988,7 @@ def add_ospf_neighbor(module, dict_area_id):
                 cli = clicopy
                 cli += ' vrouter-ospf-add vrouter-name ' + vrouter_hostname
                 cli += ' network %s ospf-area %s' % (ospf_network,
-                                                     ospf_area_id)
+                                                         ospf_area_id)
 
                 if 'Success' in run_cli(module, cli):
                     output += ' %s: Added OSPF neighbor %s to %s \n' % (
@@ -1115,6 +1198,8 @@ def main():
             pn_pim_ssm=dict(required=False, type='bool'),
             pn_area_configure_flag=dict(required=False, type='str',
                                         choices=['singlearea', 'dualarea', 'multiarea'], default='singlearea'),
+            pn_addr_type=dict(required=False, type='str',
+                              choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4_ipv6'),
         )
     )
 
