@@ -104,6 +104,12 @@ options:
       required: False
       default: False
       type: bool
+    pn_jumbo_frames:
+      description:
+        - Flag to assign mtu
+      required: False
+      default: False
+      type: bool
 """
 
 EXAMPLES = """
@@ -366,7 +372,6 @@ def find_mask(cidr):
 
     return mask
 
-
 def find_network_supernet(broadcast, cidr, supernet):
     """
     Method to find the subnet address
@@ -401,7 +406,6 @@ def find_network_supernet(broadcast, cidr, supernet):
             temp1 = ''
 
     return final_subnet
-
 
 def calculate_link_ip_addresses_ipv6(address_str, cidr_str, supernet_str, ip_count):
     """
@@ -470,6 +474,7 @@ def calculate_link_ip_addresses_ipv6(address_str, cidr_str, supernet_str, ip_cou
         yield ips_list
 
 
+
 def create_vrouter(module, switch, vnet_name):
     """
     Method to create vrouter on a switch.
@@ -504,8 +509,7 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
     Method to create vrouter interface and assign IP to it.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
-    :param ipv4: IPv4 address to be assigned to vrouter interfaces.
-    :param ipv6: IPv6 address to be assigned to vrouter interfaces.
+    :param ip: IP address to be assigned to vrouter interfaces.
     :param port: l3-port for the interface.
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
@@ -544,6 +548,8 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
         if addr_type == 'ipv4_ipv6':
             cli += ' ip2 ' + ip2
         cli += ' l3-port ' + port
+        if module.params['pn_jumbo_frames'] == True:
+            cli += ' mtu 9216'
         run_cli(module, cli)
 
         # Enable l3-port after creating vrouter interface on it
@@ -712,7 +718,6 @@ def auto_configure_link_ips(module):
     # Create vrouter on all switches.
     for switch in switch_names:
         output += create_vrouter(module, switch, vnet_name)
-
     for spine in spine_list:
         for leaf in leaf_list:
             cli = clicopy
@@ -764,7 +769,6 @@ def auto_configure_link_ips(module):
                 output += create_interface(module, spine, ip_ipv4, ip_ipv6, rport, addr_type)
 
                 leaf_port.remove(lport)
-
                 if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
                     ip_ipv6 = (ip_list[1] if supernet_ipv6 == '127' else ip_list[2])
 
@@ -816,6 +820,7 @@ def main():
             pn_bfd_min_rx=dict(required=False, type='str'),
             pn_bfd_multiplier=dict(required=False, type='str'),
             pn_stp=dict(required=False, type='bool', default=False),
+            pn_jumbo_frames=dict(required=False, type='bool', default=False),
         )
     )
 

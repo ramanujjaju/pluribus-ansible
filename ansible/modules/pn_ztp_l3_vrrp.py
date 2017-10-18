@@ -242,7 +242,6 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
 
     return output
 
-
 def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
                              vrrp_priority, list_vips, list_ips):
     """
@@ -302,7 +301,7 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
         cli += ' format switch no-show-headers '
         existing_vrouter = run_cli(module, cli).split()
         existing_vrouter = list(set(existing_vrouter))
-    
+
         if vrouter_name not in existing_vrouter:
             cli = clicopy
             cli += ' switch ' + switch
@@ -377,7 +376,8 @@ def create_vrouter_without_vrrp(module, switch, vnet_name):
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
-        cli += ' router-type hardware proto-multi %s ospf-redistribute %s' %(pim_ssm, pn_ospf_redistribute)
+        cli += ' router-type hardware proto-multi %s' % pim_ssm
+        cli += ' ospf-redistribute %s' % pn_ospf_redistribute
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
@@ -443,16 +443,16 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
     node1 = switch_list[0]
     node2 = switch_list[1]
     name = node1 + '-to-' + node2 + '-cluster'
-    host_count = 1
     list_vips = []
     addr_type = module.params['pn_addr_type']
+    vrouter_switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
 
     output = create_cluster(module, node2, name, node1, node2)
     output += create_vlan(module, vlan_id, node2)
 
     vnet_name = get_global_vnet_name(module)
 
-    for switch in switch_list:
+    for switch in vrouter_switch_list:
         output += create_vrouter(module, switch, vrrp_id, vnet_name)
 
     list_vips.append(vrrp_ip)
@@ -489,7 +489,6 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
 
     return output
 
-
 def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip,
                                               non_cluster_leaf):
     """
@@ -516,7 +515,7 @@ def configure_vrrp(module, csv_data):
     :return: Output string of configuration.
     """
     output = ''
-    vrrp_ipv6 = ''
+    vrrp_ipv6 = '' 
     vnet_name = get_global_vnet_name(module)
     for switch in module.params['pn_spine_list']:
         output += create_vrouter_without_vrrp(module, switch, vnet_name)
@@ -579,12 +578,12 @@ def main():
             pn_csv_data=dict(required=True, type='str'),
             pn_pim_ssm=dict(required=False, type='bool'),
             pn_ospf_redistribute=dict(required=False, type='str',
-                                     choices=['none', 'static', 'connected',
-                                              'rip', 'ospf'],
-                                     default='none'),
+                                    choices=['none', 'static', 'connected',
+                                            'rip', 'ospf'],
+                                    default='none'),
             pn_addr_type=dict(required=False, type='str',
-                                     choices=['ipv4', 'ipv6', 'ipv4_ipv6'],
-                                     default='ipv4_ipv6'),
+                                    choices=['ipv4', 'ipv6', 'ipv4_ipv6'],
+                                    default='ipv4_ipv6'),
         )
     )
 

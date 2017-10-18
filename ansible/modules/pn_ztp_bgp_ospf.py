@@ -820,11 +820,9 @@ def add_ospf_neighbor(module, dict_area_id):
             cli += ' vrouter-loopback-interface-show '
             cli += ' vrouter-name %s format ip ' % vrouter_spine
             cli += ' no-show-headers '
-            loopback_ip = run_cli(module, cli).split()
-            loopback_ip.remove(vrouter_spine)
-            loopback_ip = loopback_ip[0].split('.')
-            loopback_network = loopback_ip[0] + '.' + loopback_ip[1] + '.'
-            loopback_network += loopback_ip[2] + '.' + '0/24'
+            loopback_network = run_cli(module, cli).split()
+            loopback_network.remove(vrouter_spine)
+            loopback_network = loopback_network[0] + '/32'
 
         output += add_ospf_loopback_spine(module, spine, vrouter_spine,
                                           loopback_network, '0')
@@ -1030,7 +1028,7 @@ def add_ospf_redistribute(module, vrouter_names):
 
 
 def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
-                                 ospf_network, ospf_area_id):
+                                 ospf_network, ospf_area_id, cluster_ports):
     """
     Method to create interfaces and add ospf neighbors.
     :param module: The Ansible module to fetch input parameters.
@@ -1052,10 +1050,15 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
 
     if vlan_id not in existing_vlans:
         cli = clicopy
-        cli += ' switch %s vlan-create id %s scope local ' % (switch_name,
+        cli += ' switch %s vlan-create id %s scope cluster ' % (switch_name,
                                                               vlan_id)
+        cli += ' ports none description iOSPF-cluster-vlan '
         run_cli(module, cli)
         output = ' %s: Created vlan with id %s \n' % (switch_name, vlan_id)
+
+        cli = clicopy
+        cli += ' switch %s vlan-port-add vlan-id %s ports %s' % (switch_name, vlan_id, cluster_ports)
+        run_cli(module, cli)
         CHANGED_FLAG.append(True)
 
     cli = clicopy
@@ -1070,14 +1073,13 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
 
     if vrouter not in existing_vrouter_interface:
         cli = clicopy
+        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
+            vrouter, interface_ip, vlan_id
+        )
         if pim_ssm == True:
-            cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s pim-cluster ' % (
-                vrouter, interface_ip, vlan_id
-            )
-        else:
-            cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
-                vrouter, interface_ip, vlan_id
-            )
+            cli += ' pim-cluster '
+        if module.params['pn_jumbo_frames'] == True:
+            cli += ' mtu 9216'
         run_cli(module, cli)
         output += ' %s: Added vrouter interface with ip %s on %s \n' % (
             switch_name, interface_ip, vrouter
@@ -1136,9 +1138,9 @@ def assign_leafcluster_ospf_interface(module, dict_area_id):
     if len(cluster_list) > 0 and cluster_list[0] != 'Success':
         for cluster in cluster_list:
             cli = clicopy
-            cli += ' cluster-show name %s format cluster-node-1' % cluster
-            cli += ' no-show-headers'
-            cluster_node_1 = run_cli(module, cli).split()[0]
+            cli += ' cluster-show name %s format cluster-node-1,' % cluster
+            cli += 'ports,cluster-node-2,remote-ports no-show-headers'
+            cluster_node_1, cluster_ports_1, cluster_node_2, cluster_ports_2 = run_cli(module, cli).split()
 
             if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
                 ip_count = subnet_count * 4
@@ -1146,18 +1148,13 @@ def assign_leafcluster_ospf_interface(module, dict_area_id):
                 ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
                 ospf_network = static_part + str(ip_count) + '/' + str(supernet)
 
-                cli = clicopy
-                cli += ' cluster-show name %s format cluster-node-2' % cluster
-                cli += ' no-show-headers'
-                cluster_node_2 = run_cli(module, cli).split()[0]
-
                 ospf_area_id = dict_area_id[cluster_node_1]
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
                                                        ip1, ospf_network,
-                                                       ospf_area_id)
+                                                       ospf_area_id, cluster_ports_1)
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
                                                        ip2, ospf_network,
-                                                       ospf_area_id)
+                                                       ospf_area_id, cluster_ports_2)
 
                 subnet_count += 1
     else:
@@ -1193,6 +1190,7 @@ def main():
             pn_iospf_ip_range=dict(required=False, type='str',
                                    default='75.75.75.0/24'),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
+            pn_jumbo_frames=dict(required=False, type='bool', default=False),
             pn_routing_protocol=dict(required=False, type='str',
                                      choices=['ebgp', 'ospf'], default='ebgp'),
             pn_pim_ssm=dict(required=False, type='bool'),

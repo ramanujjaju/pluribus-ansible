@@ -25,7 +25,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_fabric_creation
+module: pn_ztp_initial_setup
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: Module to perform fabric creation/join.
 description:
@@ -319,6 +319,24 @@ def modify_stp_local(module, modify_flag):
     else:
         return ' Already modified '
 
+def modify_ports(module, modify_flag):
+    """
+    Method to enable/disable Jumbo flag on a switch ports.
+    :param module: The Ansible module to fetch input parameters.
+    :param modify_flag: Enable/disable flag to set.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module)
+    cli += ' switch-local port-config-modify port all jumbo '
+    current_state = list(set(run_cli(module, cli).split()))
+
+    if current_state == 'off':
+        cli = pn_cli(module)
+        cli += ' switch-local port-config-modify port all %s ' + modify_flag
+        run_cli(module, cli)
+        return 'Success'
+    else:
+        return ' Already modified '
 
 def configure_control_network(module, network):
     """
@@ -401,6 +419,7 @@ def create_or_join_fabric(module, fabric_name, fabric_network):
         cli = clicopy
         cli += ' fabric-create name ' + fabric_name
         cli += ' fabric-network ' + fabric_network
+        return run_cli(module, cli)
     else:
         cli = clicopy
         cli += ' fabric-info format name no-show-headers'
@@ -429,6 +448,7 @@ def enable_web_api(module):
     cli = pn_cli(module)
     cli += ' admin-service-modify web if mgmt '
     run_cli(module, cli)
+
 
 def toggle_40g_local(module):
     """
@@ -517,7 +537,9 @@ def toggle_40g_local(module):
         cli += ' speed 40g '
         output += run_cli(module, cli)
         output += 'port ' + str(first_port) + ' is now 40g'
+
     return output
+
 
 def assign_inband_ip(module):
     """
@@ -610,14 +632,19 @@ def main():
         CHANGED_FLAG.append(True)
 
     # Create/join fabric
-    if 'already in the fabric' not in create_or_join_fabric(module, fabric_name,
+    if 'created' in create_or_join_fabric(module, fabric_name,
                                                             fabric_network):
         CHANGED_FLAG.append(True)
-
-    results.append({
-        'switch': current_switch,
-        'output': u"Joined fabric '{}'".format(fabric_name)
-    })
+        results.append({
+            'switch': current_switch,
+            'output': u"Created fabric '{}'".format(fabric_name)
+        })
+    else:
+        CHANGED_FLAG.append(True)
+        results.append({
+            'switch': current_switch,
+            'output': u"Joined fabric '{}'".format(fabric_name)
+        })
 
     # Configure fabric control network to either mgmt or in-band
     if 'Success' in configure_control_network(module, control_network):
@@ -642,6 +669,19 @@ def main():
         'switch': current_switch,
         'output': 'STP enabled'
     })
+    # Enable jumbo flag
+#    if 'Success' in modify_ports(module, 'jumbo'):
+#        CHANGED_FLAG.append(True)
+
+#        results.append({
+#        'switch': current_switch,
+#        'output': 'Jumbo enabled in ports'
+#    })
+#    else:
+#        results.append({
+#        'switch': current_switch,
+#        'output': 'Jumbo flag is already enabled'
+#    })
 
     # Enable ports
     if enable_ports(module):
