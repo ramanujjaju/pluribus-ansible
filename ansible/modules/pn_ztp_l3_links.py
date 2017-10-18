@@ -332,7 +332,7 @@ def calculate_link_ip_addresses_ipv4(address_str, cidr_str, supernet_str):
     return available_ips
 
 
-def find_network(address, mask):
+def find_network_v6(address, mask):
     """
     Method to find the network address
     :param address: The address whose network to be found.
@@ -346,7 +346,7 @@ def find_network(address, mask):
     return network
 
 
-def find_broadcast(network, cidr):
+def find_broadcast_v6(network, cidr):
     """
     Method to find the broadcast address
     :param network: The network ip whose broadcast ip to be found.
@@ -360,7 +360,8 @@ def find_broadcast(network, cidr):
 
     return broadcast
 
-def find_mask(cidr):
+
+def find_mask_v6(cidr):
     """
     Method to find the subnet mask.
     :param cidr: Subnet mask.
@@ -372,7 +373,8 @@ def find_mask(cidr):
 
     return mask
 
-def find_network_supernet(broadcast, cidr, supernet):
+
+def find_network_supernet_v6(broadcast, cidr, supernet):
     """
     Method to find the subnet address
     :param broadcast: The next subnet to be found after the broadcast ip.
@@ -407,6 +409,7 @@ def find_network_supernet(broadcast, cidr, supernet):
 
     return final_subnet
 
+
 def calculate_link_ip_addresses_ipv6(address_str, cidr_str, supernet_str, ip_count):
     """
     Generator to calculate link IPs for layer 3 fabric.
@@ -437,16 +440,16 @@ def calculate_link_ip_addresses_ipv6(address_str, cidr_str, supernet_str, ip_cou
     cidr = int(cidr_str)
     supernet = int(supernet_str)
 
-    mask_cidr = find_mask(cidr)
-    network = find_network(address, mask_cidr)
-    broadcast = find_broadcast(network, cidr)
+    mask_cidr = find_mask_v6(cidr)
+    network = find_network_v6(address, mask_cidr)
+    broadcast = find_broadcast_v6(network, cidr)
 
-    mask_supernet = find_mask(supernet)
+    mask_supernet = find_mask_v6(supernet)
     network_hex = []
     for i in range(8):
         network_hex.append(hex(network[i])[2:])
-    network_supernet = find_network(network_hex, mask_supernet)
-    broadcast_supernet = find_broadcast(network_supernet, supernet)
+    network_supernet = find_network_v6(network_hex, mask_supernet)
+    broadcast_supernet = find_broadcast_v6(network_supernet, supernet)
 
     initial_ip = network_supernet[7]
     ip_checking = list(network_supernet)
@@ -468,11 +471,10 @@ def calculate_link_ip_addresses_ipv6(address_str, cidr_str, supernet_str, ip_cou
             no_of_ip += 1
             ip_checking = list(broadcast_supernet)
         initial_ip = broadcast_supernet[7]
-        network_supernet = find_network_supernet(broadcast_supernet, cidr, supernet)
-        broadcast_supernet = find_broadcast(network_supernet, supernet)
+        network_supernet = find_network_supernet_v6(broadcast_supernet, cidr, supernet)
+        broadcast_supernet = find_broadcast_v6(network_supernet, supernet)
 
         yield ips_list
-
 
 
 def create_vrouter(module, switch, vnet_name):
@@ -701,13 +703,10 @@ def auto_configure_link_ips(module):
     # Get the list of available link ips to assign.
     if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
         if supernet_ipv6 == '127':
+            get_count = 2 if supernet_ipv6 == '127' else 3
             available_ips_ipv6 = calculate_link_ip_addresses_ipv6(module.params['pn_net_address_ipv6'],
                                                         module.params['pn_cidr_ipv6'],
-                                                        supernet_ipv6, 2)
-        else:
-            available_ips_ipv6 = calculate_link_ip_addresses_ipv6(module.params['pn_net_address_ipv6'],
-                                                        module.params['pn_cidr_ipv6'],
-                                                        supernet_ipv6, 3)
+                                                        supernet_ipv6, get_count)
 
     # Get the fabric name and create vnet name required for vrouter creation.
     cli = clicopy
@@ -736,7 +735,7 @@ def auto_configure_link_ips(module):
                     try:
                         ip_list = available_ips_ipv6.next()
                     except:
-                        msg = 'Error: ip range exhausted'
+                        msg = 'Error: ipv6 range exhausted'
                         results = {
                             'switch': '',
                             'output': msg
@@ -803,7 +802,7 @@ def main():
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_addr_type=dict(required=False, type='str',
-                              choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4_ipv6'),
+                              choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4'),
             pn_net_address_ipv4=dict(required=False, type='str'),
             pn_net_address_ipv6=dict(required=False, type='str'),
             pn_cidr_ipv4=dict(required=False, type='str'),

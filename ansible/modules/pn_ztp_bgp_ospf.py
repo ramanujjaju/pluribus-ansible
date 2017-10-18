@@ -762,11 +762,11 @@ def find_area_id_leaf_switches(module):
 
     if area_configure_flag == 'singlearea':
         for leaf in leaf_list:
-            dict_area_id[leaf] = '0'
+            dict_area_id[leaf] = str(ospf_area_id)
 
     elif area_configure_flag == 'dualarea':
         for leaf in leaf_list:
-            dict_area_id[leaf] = str(ospf_area_id)
+            dict_area_id[leaf] = str(ospf_area_id + 1)
 
     elif area_configure_flag == 'multiarea':
         cli += ' cluster-show format name no-show-headers'
@@ -780,9 +780,9 @@ def find_area_id_leaf_switches(module):
                 cluster_nodes = run_cli(module, cli).split()
 
                 if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
+                    ospf_area_id += 1
                     dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
                     dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
-                    ospf_area_id += 1
                     cluster_leaf_list.append(cluster_nodes[0])
                     cluster_leaf_list.append(cluster_nodes[1])
 
@@ -825,7 +825,7 @@ def add_ospf_neighbor(module, dict_area_id):
             loopback_network = loopback_network[0] + '/32'
 
         output += add_ospf_loopback_spine(module, spine, vrouter_spine,
-                                          loopback_network, '0')
+                                          loopback_network, module.params['pn_ospf_area_id'])
 
         cli = clicopy
         cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
@@ -1197,7 +1197,7 @@ def main():
             pn_area_configure_flag=dict(required=False, type='str',
                                         choices=['singlearea', 'dualarea', 'multiarea'], default='singlearea'),
             pn_addr_type=dict(required=False, type='str',
-                              choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4_ipv6'),
+                              choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4'),
         )
     )
 

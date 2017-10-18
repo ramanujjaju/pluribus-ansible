@@ -109,13 +109,13 @@
         pn_clipassword: "{{ PASSWORD }}"                # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_addr_type: 'ipv4_ipv6'
         pn_net_address_ipv4: "172.168.1.0"          		# Network address required to calculate link IPs for layer3 fabric.
         pn_cidr_ipv4: "24"                                      # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet_ipv4: "31"                          # Supernet mask required to calculate link IPs for layer3 fabric.
         pn_net_address_ipv6: '2001:deb:1a:0015:1:0:0:0'                      # Network address required to calculate link IPs for layer3 fabric.
         pn_cidr_ipv6: "64"                                      # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet_ipv6: "127"                          # Supernet mask required to calculate link IPs for layer3 fabric.
-        pn_addr_type: 'ipv4_ipv6'
         pn_loopback_ip: "109.109.109.1/24"          	# Loopback ip starting value for vrouters. Default: 109.109.109.0/24.
         pn_bfd: True                          		# Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
         pn_bfd_min_rx: 200           			# BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.

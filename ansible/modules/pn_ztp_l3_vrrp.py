@@ -583,7 +583,7 @@ def main():
                                     default='none'),
             pn_addr_type=dict(required=False, type='str',
                                     choices=['ipv4', 'ipv6', 'ipv4_ipv6'],
-                                    default='ipv4_ipv6'),
+                                    default='ipv4'),
         )
     )
 
