@@ -319,7 +319,8 @@ def modify_stp_local(module, modify_flag):
     else:
         return ' Already modified '
 
-def modify_ports(module, modify_flag):
+
+def ports_modify_jumbo(module, modify_flag):
     """
     Method to enable/disable Jumbo flag on a switch ports.
     :param module: The Ansible module to fetch input parameters.
@@ -327,16 +328,27 @@ def modify_ports(module, modify_flag):
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    cli += ' switch-local port-config-modify port all jumbo '
-    current_state = list(set(run_cli(module, cli).split()))
-
-    if current_state == 'off':
-        cli = pn_cli(module)
-        cli += ' switch-local port-config-modify port all %s ' + modify_flag
+    clicopy = cli
+    trunk_ports = []
+    cli += ' switch-local port-show format port,trunk status trunk no-show-headers'
+    cli_out = run_cli(module, cli).strip().split('\n')
+    for output in cli_out:
+        output = output.strip().split()
+        port, trunk_name = output[0], output[1]
+        trunk_ports.append(port)
+        cli = clicopy
+        cli += 'trunk-modify name %s jumbo ' % trunk_name
         run_cli(module, cli)
-        return 'Success'
-    else:
-        return ' Already modified '
+
+    cli = clicopy
+    cli += ' switch-local port-config-show format port no-show-headers'
+    ports = run_cli(module, cli).split()
+    ports_to_modify = list(set(ports) - set(trunk_ports))
+    ports_to_modify = ','.join(ports_to_modify)
+    cli = clicopy
+    cli += 'switch-local port-config-modify port %s jumbo' % ports_to_modify
+    return run_cli(module, cli)
+
 
 def configure_control_network(module, network):
     """
@@ -670,18 +682,13 @@ def main():
         'output': 'STP enabled'
     })
     # Enable jumbo flag
-#    if 'Success' in modify_ports(module, 'jumbo'):
-#        CHANGED_FLAG.append(True)
+    if 'Success' in ports_modify_jumbo(module, 'jumbo'):
+        CHANGED_FLAG.append(True)
 
-#        results.append({
-#        'switch': current_switch,
-#        'output': 'Jumbo enabled in ports'
-#    })
-#    else:
-#        results.append({
-#        'switch': current_switch,
-#        'output': 'Jumbo flag is already enabled'
-#    })
+        results.append({
+        'switch': current_switch,
+        'output': 'Jumbo enabled in ports'
+    })
 
     # Enable ports
     if enable_ports(module):

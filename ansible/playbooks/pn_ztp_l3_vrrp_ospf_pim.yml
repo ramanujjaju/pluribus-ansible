@@ -88,6 +88,7 @@
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # Csv file containing L3 vrrp data.
         pn_pim_ssm: True                 	# Variable to specify pim_ssm for ospf
+        pn_jumbo_frames: True                   # Flag to assign mtu Default: False.
         pn_addr_type: 'ipv4_ipv6'
         pn_ospf_redistribute: 'connected'       # Variable to configure ospf redistribute
       register: vrrp_out                        # Variable to hold/register output of the above tasks.
@@ -142,7 +143,7 @@
         pn_leaf_list: "{{ groups['leaf'] }}"               # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_bfd: True                             	   # Indicate if BFD config should be added to eBGP. Default: False.
         pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
-        pn_ospf_area_id: "1"           			   # Area id to configure for ospf. Default: 0
+        pn_ospf_area_id: "0"           			   # Area id to configure for ospf. Default: 0
         pn_iospf_ip_range: "75.75.75.0/24"       	   # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
         pn_iospf_vlan: "4040"                  		   # Vlan for creating the interfaces between leaf clusters. Default:'4040'
         pn_addr_type: 'ipv4_ipv6'

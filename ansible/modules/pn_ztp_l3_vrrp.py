@@ -274,6 +274,8 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
         cli += ' vlan %s if data ' % vlan_id
         if module.params['pn_addr_type'] == 'ipv4_ipv6':
             cli += ' ip2 ' + list_ips[1]
+        if module.params['pn_jumbo_frames'] == True:
+            cli += ' mtu 9216'
         run_cli(module, cli)
         output = ' %s: Added vrouter interface with ip %s' % (
             switch, list_ips[0]
@@ -310,6 +312,8 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
             cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
             cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
                                                            vrrp_priority)
+            if module.params['pn_jumbo_frames'] == True:
+                cli += ' mtu 9216'
             run_cli(module, cli)
             output += ' %s: Added vrouter interface with ip %s to %s \n' % (
                 switch, ip_vip, vrouter_name
@@ -419,6 +423,8 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' vlan ' + vlan_id
         cli += ' ip ' + ip_gateway
+        if module.params['pn_jumbo_frames'] == True:
+            cli += ' mtu 9216'
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
         return ' %s: Added vrouter interface with ip %s on %s \n' % (
@@ -452,7 +458,7 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
 
     vnet_name = get_global_vnet_name(module)
 
-    for switch in vrouter_switch_list:
+    for switch in switch_list:
         output += create_vrouter(module, switch, vrrp_id, vnet_name)
 
     list_vips.append(vrrp_ip)
@@ -577,6 +583,7 @@ def main():
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
             pn_pim_ssm=dict(required=False, type='bool'),
+            pn_jumbo_frames=dict(required=False, type='bool', default=False),
             pn_ospf_redistribute=dict(required=False, type='str',
                                     choices=['none', 'static', 'connected',
                                             'rip', 'ospf'],

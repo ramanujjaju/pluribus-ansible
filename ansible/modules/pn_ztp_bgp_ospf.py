@@ -117,6 +117,12 @@ options:
       required: False
       choices=['singlearea', 'dualarea', 'multiarea']
       default: 'singlearea'
+    pn_jumbo_frames:
+      description:
+        - Flag to assign mtu
+      required: False
+      default: False
+      type: bool
 """
 
 EXAMPLES = """
@@ -709,39 +715,41 @@ def configure_ospf_bfd(module, vrouter, ip):
         return ''
 
 
-def add_ospf_loopback_spine(module, switch, vrouter, ospf_network,
-                            ospf_area_id):
+def add_ospf_loopback(module):
     """
-    Method to add ospf_neighbor for loopback network for spines.
+    Method to add ospf_neighbor for loopback network for switches.
     :param module: The Ansible module to fetch input parameters.
-    :param switch: The name of the ansible switch to add neighbor.
-    :param vrouter: The vrouter name to add ospf bfd.
-    :param ospf_network: The network for adding the ospf neighbor.
-    :param ospf_area_id: The area_id for the spines loopback neighbor.
     :return: String describing if OSPF Neighbor got added or not.
     """
     global CHANGED_FLAG
     output = ''
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+    ospf_area_id = module.params['pn_ospf_area_id']
+
     cli = pn_cli(module)
     clicopy = cli
-
-    cli += ' vrouter-ospf-show'
-    cli += ' network %s format switch no-show-headers ' % ospf_network
-    already_added = run_cli(module, cli).split()
-
-    if vrouter in already_added:
-        pass
-    else:
+    cli += ' vrouter-loopback-interface-show '
+    cli += ' format ip parsable-delim ,'
+    cli_out = run_cli(module, cli).strip().split('\n')
+    for lb_info in cli_out:
+        lb_info = lb_info.strip().split(',')
+        vr_name, lb_net = lb_info[0], lb_info[1] + '/32'
         cli = clicopy
-        cli += ' vrouter-ospf-add vrouter-name ' + vrouter
-        cli += ' network %s ospf-area %s' % (ospf_network,
-                                             ospf_area_id)
+        cli += ' vrouter-ospf-show'
+        cli += ' network %s format switch no-show-headers ' % lb_net
+        already_added = run_cli(module, cli).split()
+        if vr_name in already_added:
+            pass
+        else:
+            cli = clicopy
+            cli += ' vrouter-ospf-add vrouter-name ' + vr_name
+            cli += ' network %s ospf-area %s' % (lb_net, ospf_area_id)
 
-        if 'Success' in run_cli(module, cli):
-            output += ' %s: Added OSPF neighbor %s to %s \n' % (switch,
-                                                                ospf_network,
-                                                                vrouter)
-            CHANGED_FLAG.append(True)
+            if 'Success' in run_cli(module, cli):
+                output += ' %s: Added OSPF neighbor %s to %s \n' % (module.params['pn_spine_list'][0],
+    	        						lb_net,
+    	        						vr_name)
+        	CHANGED_FLAG.append(True)
 
     return output
 
@@ -814,18 +822,6 @@ def add_ospf_neighbor(module, dict_area_id):
         cli += ' vrouter-show location %s' % spine
         cli += ' format name no-show-headers'
         vrouter_spine = run_cli(module, cli).split()[0]
-
-        if spine_list.index(spine) == 0:
-            cli = clicopy
-            cli += ' vrouter-loopback-interface-show '
-            cli += ' vrouter-name %s format ip ' % vrouter_spine
-            cli += ' no-show-headers '
-            loopback_network = run_cli(module, cli).split()
-            loopback_network.remove(vrouter_spine)
-            loopback_network = loopback_network[0] + '/32'
-
-        output += add_ospf_loopback_spine(module, spine, vrouter_spine,
-                                          loopback_network, module.params['pn_ospf_area_id'])
 
         cli = clicopy
         cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
@@ -1056,10 +1052,10 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
         run_cli(module, cli)
         output = ' %s: Created vlan with id %s \n' % (switch_name, vlan_id)
 
-        cli = clicopy
-        cli += ' switch %s vlan-port-add vlan-id %s ports %s' % (switch_name, vlan_id, cluster_ports)
-        run_cli(module, cli)
-        CHANGED_FLAG.append(True)
+    cli = clicopy
+    cli += ' switch %s vlan-port-add vlan-id %s ports %s' % (switch_name, vlan_id, cluster_ports)
+    run_cli(module, cli)
+    CHANGED_FLAG.append(True)
 
     cli = clicopy
     cli += ' vrouter-show location %s format name' % switch_name
@@ -1221,6 +1217,7 @@ def main():
         message += assign_ibgp_interface(module, dict_bgp_as)
     elif routing_protocol == 'ospf':
         dict_area_id = find_area_id_leaf_switches(module)
+        message += add_ospf_loopback(module)
         message += add_ospf_neighbor(module, dict_area_id)
         message += add_ospf_redistribute(module, vrouter_names)
         message += assign_leafcluster_ospf_interface(module, dict_area_id)
