@@ -1,0 +1,37 @@
+---
+
+
+- name: aaa tacacs module
+  hosts: leaf[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: aaa-tacacs functionality
+      pn_aaa_tacacs:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-leaf4"                  #Target switch to run the CLI on.
+        pn_action: "delete"                             #aaa tacacs configuration command: create/delete/modify.
+        pn_scope: "local"                               # local/fabric
+        pn_name: "aaa_first"
+        pn_server: "server2"
+        #pn_port:
+        #pn_secret:
+        #pn_priority:
+        #pn_authen_method:                               # pap/chap/ms-chap
+        #pn_service:
+        #pn_service_shell:
+        #pn_service_vtysh:
+        #pn_authen: True
+        #pn_authen_local: True
+        #pn_sess_acct: True
+        #pn_cmd_acct: True
+        #pn_acct_local: True
+        #pn_author_local: True
+        #pn_cmd_author: True
+        #pn_sess_author: True
+      register: output
+    - debug:
+        var: output

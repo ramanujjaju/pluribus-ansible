@@ -1,0 +1,20 @@
+---
+
+
+- name: snmp user module
+  hosts: leaf[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-user functionality
+      pn_snmp_user:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-leaf4"                  #Target switch to run the CLI on.
+        pn_action: "delete"                             #snmp-user configuration command: create/delete.
+        pn_user_name: "snmp_user_name"                   
+      register: output
+    - debug:
+        var: output

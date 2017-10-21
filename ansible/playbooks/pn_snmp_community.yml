@@ -1,0 +1,21 @@
+---
+
+
+- name: snmp community module
+  hosts: leaf[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-community functionality
+      pn_snmp_community:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-leaf4"                  #Target switch to run the CLI on.
+        pn_action: "delete"                             #snmp-community configuration command: create/delete/modify.
+        pn_community_string: "football"                       
+        pn_community_type: "read-write"                       
+      register: output
+    - debug:
+        var: output
