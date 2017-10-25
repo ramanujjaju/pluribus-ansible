@@ -34,7 +34,7 @@ description:
   - C(create) creates a new vRouter service.
   - C(delete) deletes a vRouter service.
   - C(modify) modifies a vRouter service.
-  - Certain parameters are allowed with certain actions only. 
+  - Certain parameters are allowed with certain actions only.
 options:
   pn_cliusername:
     description:
@@ -133,7 +133,7 @@ options:
       - Metric for redistributing BGP OSPF routes.
     type: str
   pn_bgp_redist_static_routemap:
-    description: 
+    description:
       - Routemap for redistributing BGP static routes.
     type: str
   pn_bgp_redist_connected_routemap:
@@ -153,7 +153,7 @@ options:
       - IP address for BGP cluster ID.
     type: str
   pn_bgp_ibgp_multipath:
-    description: 
+    description:
       - Number of iBGP multipath connections.
     type: str
   pn_bgp_bestpath:
@@ -170,7 +170,7 @@ options:
       - Restart BGP gracefully.
     type: bool
   pn_bgp_stalepath_time:
-    description: 
+    description:
       - Interval before a BGP path becomes stale.
     type: str
   pn_bgp_scantime:
@@ -197,7 +197,7 @@ options:
     description:
       - BGP distance for routes external to AS.
     type: str
-  pn_bgp_distance_local: 
+  pn_bgp_distance_local:
     description:
       - BGP distance for local routes.
     type: str
@@ -234,7 +234,7 @@ options:
       - Route map for OSPF redistribution of connected routes.
     type: str
   pn_ospf_redist_rip_metric:
-    description: 
+    description:
       - Metric for OSPF redistribution of RIP routes.
     type: str
   pn_ospf_redist_rip_metric_type:
@@ -282,7 +282,7 @@ options:
       - Track port for VRRP.
     type: str
   pn_bgp_snmp:
-    description: 
+    description:
       - Enable BGP SNMP MIB.
     type: bool
   pn_bgp_snmp_notif:
@@ -449,7 +449,6 @@ def run_cli(module, cli):
         )
 
 
-# noinspection SyntaxError,SyntaxError
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
@@ -457,18 +456,23 @@ def main():
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str', default='local'),
-            pn_action=dict(required=True, type='str', choices=['create', 'delete', 'modify']),
+            pn_action=dict(required=True, type='str',
+                           choices=['create', 'delete', 'modify']),
             pn_name=dict(required=True, type='str'),
             pn_vnet=dict(required=True, type='str'),
-            pn_router_type=dict(required=True, type='str', choices=['hardware', 'software']),
-            pn_vnet_service_type=dict(type='str', choices=['dedicated', 'shared']),
-            pn_service_state=dict(type='str', choices=['enable', 'disable']),
+            pn_router_type=dict(required=True, type='str',
+                                choices=['hardware', 'software']),
+            pn_vnet_service_type=dict(type='str',
+                                      choices=['dedicated', 'shared']),
+            pn_service_state=dict(type='str',
+                                  choices=['enable', 'disable']),
             pn_shared_vnet_mgr=dict(type='str'),
             pn_location=dict(type='str'),
             pn_storage_pool=dict(type='str'),
             pn_hw_vrrp_id=dict(type='str'),
             pn_router_id=dict(type='str'),
-            pn_proto_multi=dict(type='str', choices=['none', 'dvmrp', 'pip-ssm']),
+            pn_proto_multi=dict(type='str',
+                                choices=['none', 'dvmrp', 'pip-ssm']),
             pn_bgp_as=dict(type='str'),
             pn_bgp_redistribute=dict(type='str'),
             pn_bgp_redist_static_metric=dict(type='str'),
@@ -481,7 +485,8 @@ def main():
             pn_bgp_cluster_id=dict(type='str'),
             pn_bgp_max_paths=dict(type='str'),
             pn_bgp_ibgp_multipath=dict(type='str'),
-            pn_bgp_bestpath=dict(type='str', choices=['ignore', 'multipath-relax']),
+            pn_bgp_bestpath=dict(type='str',
+                                 choices=['ignore', 'multipath-relax']),
             pn_bgp_dampening=dict(type='bool'),
             pn_bgp_graceful_restart=dict(type='bool'),
             pn_bgp_stalepath_time=dict(type='str'),
@@ -495,15 +500,19 @@ def main():
             pn_rip_redistribute=dict(type='str'),
             pn_ospf_redistribute=dict(type='str'),
             pn_ospf_redist_static_metric=dict(type='str'),
-            pn_ospf_redist_static_metric_type=dict(type='str', choices=['1', '2']),
+            pn_ospf_redist_static_metric_type=dict(type='str',
+                                                   choices=['1', '2']),
             pn_ospf_redist_static_routemap=dict(type='str'),
             pn_ospf_redist_connected_metric=dict(type='str'),
-            pn_ospf_redist_connected_metric_type=dict(type='str', choices=['1', '2']),
+            pn_ospf_redist_connected_metric_type=dict(type='str',
+                                                      choices=['1', '2']),
             pn_ospf_redist_connected_routemap=dict(type='str'),
             pn_ospf_redist_rip_metric=dict(type='str'),
-            pn_ospf_redist_rip_metric_type=dict(type='str', choices=['1', '2']),
+            pn_ospf_redist_rip_metric_type=dict(type='str',
+                                                choices=['1', '2']),
             pn_ospf_redist_bgp_metric=dict(type='str'),
-            pn_ospf_redist_bgp_metric_type=dict(type='str', choices=['1', '2']),
+            pn_ospf_redist_bgp_metric_type=dict(type='str',
+                                                choices=['1', '2']),
             pn_ospf_redist_bgp_routemap=dict(type='str'),
             pn_ospf_distance_external=dict(type='str'),
             pn_ospf_distance_internal=dict(type='str'),
@@ -536,11 +545,13 @@ def main():
     bgp_as = module.params['pn_bgp_as']
     bgp_redistribute = module.params['pn_bgp_redistribute']
     bgp_redist_static_metric = module.params['pn_bgp_redist_static_metric']
-    bgp_redist_connected_metric = module.params['pn_bgp_redist_connected_metric']
+    bgp_redist_connected_metric = \
+        module.params['pn_bgp_redist_connected_metric']
     bgp_redist_rip_metric = module.params['pn_bgp_redist_rip_metric']
     bgp_redist_ospf_metric = module.params['pn_bgp_redist_ospf_metric']
     bgp_redist_static_routemap = module.params['pn_bgp_redist_static_routemap']
-    bgp_redist_connected_routemap = module.params['pn_bgp_redist_connected_routemap']
+    bgp_redist_connected_routemap = \
+        module.params['pn_bgp_redist_connected_routemap']
     bgp_redist_ospf_routemap = module.params['pn_bgp_redist_ospf_routemap']
     bgp_cluster_id = module.params['pn_bgp_cluster_id']
     bgp_max_paths = module.params['pn_bgp_max_paths']
@@ -558,16 +569,24 @@ def main():
     bgp_distance_local = module.params['pn_bgp_distance_local']
     rip_redistribute = module.params['pn_rip_redistribute']
     ospf_redistribute = module.params['pn_ospf_redistribute']
-    ospf_redist_static_metric = module.params['pn_ospf_redist_static_metric']
-    ospf_redist_static_metric_type = module.params['pn_ospf_redist_static_metric_type']
-    ospf_redist_connected_metric = module.params['pn_ospf_redist_connected_metric']
-    ospf_redist_connected_metric_type = module.params['pn_ospf_redist_connected_metric_type']
+    ospf_redist_static_metric = \
+        module.params['pn_ospf_redist_static_metric']
+    ospf_redist_static_metric_type = \
+        module.params['pn_ospf_redist_static_metric_type']
+    ospf_redist_connected_metric = \
+        module.params['pn_ospf_redist_connected_metric']
+    ospf_redist_connected_metric_type = \
+        module.params['pn_ospf_redist_connected_metric_type']
     ospf_redist_rip_metric = module.params['pn_ospf_redist_rip_metric']
-    ospf_redist_rip_metric_type = module.params['pn_ospf_redist_rip_metric_type']
+    ospf_redist_rip_metric_type = \
+        module.params['pn_ospf_redist_rip_metric_type']
     ospf_redist_bgp_metric = module.params['pn_ospf_redist_bgp_metric']
-    ospf_redist_bgp_metric_type = module.params['pn_ospf_redist_bgp_metric_type']
-    ospf_redist_static_routemap = module.params['pn_ospf_redist_static_routemap']
-    ospf_redist_connected_routemap = module.params['pn_ospf_redist_connected_routemap']
+    ospf_redist_bgp_metric_type = \
+        module.params['pn_ospf_redist_bgp_metric_type']
+    ospf_redist_static_routemap = \
+        module.params['pn_ospf_redist_static_routemap']
+    ospf_redist_connected_routemap = \
+        module.params['pn_ospf_redist_connected_routemap']
     ospf_redist_bgp_routemap = module.params['pn_ospf_redist_bgp_routemap']
     ospf_distance_external = module.params['pn_ospf_distance_external']
     ospf_distance_internal = module.params['pn_ospf_distance_internal']
@@ -610,7 +629,8 @@ def main():
                 module.fail_json(
                     msg='vRouter with name %s already exists' % name
                 )
-            cli += ' %s name %s vnet %s router-type %s ' % (command, name, vnet, router_type)
+            cli += ' %s name %s vnet %s router-type %s ' \
+                   % (command, name, vnet, router_type)
 
         if hw_vrrp_id:
             cli += ' hw-vrrp-id ' + hw_vrrp_id
@@ -646,7 +666,8 @@ def main():
         if bgp_redist_static_metric:
             cli += ' bgp-redist-static-metric ' + bgp_redist_static_metric
         if bgp_redist_connected_metric:
-            cli += ' bgp-redist-connected-metric ' + bgp_redist_connected_metric
+            cli += ' bgp-redist-connected-metric ' \
+                   + bgp_redist_connected_metric
         if bgp_redist_rip_metric:
             cli += ' bgp-redist-rip-metric ' + bgp_redist_rip_metric
         if bgp_redist_ospf_metric:
@@ -692,19 +713,24 @@ def main():
         if ospf_redist_static_metric:
             cli += ' ospf-redist-static-metric ' + ospf_redist_static_metric
         if ospf_redist_static_metric_type:
-            cli += ' ospf-redist-static-metric-type ' + ospf_redist_static_metric_type
+            cli += ' ospf-redist-static-metric-type ' \
+                   + ospf_redist_static_metric_type
         if ospf_redist_connected_metric:
-            cli += ' ospf-redist-connected-metric ' + ospf_redist_connected_metric
+            cli += ' ospf-redist-connected-metric ' \
+                   + ospf_redist_connected_metric
         if ospf_redist_connected_metric_type:
-            cli += ' ospf-redist-connected-metric-type ' + ospf_redist_connected_metric_type
+            cli += ' ospf-redist-connected-metric-type ' \
+                   + ospf_redist_connected_metric_type
         if ospf_redist_rip_metric:
             cli += ' ospf-redist-rip-metric ' + ospf_redist_rip_metric
         if ospf_redist_rip_metric_type:
-            cli += ' ospf-redist-rip-metric-type ' + ospf_redist_rip_metric_type
+            cli += ' ospf-redist-rip-metric-type ' \
+                   + ospf_redist_rip_metric_type
         if ospf_redist_bgp_metric:
             cli += ' ospf-redist-bgp-metric ' + ospf_redist_bgp_metric
         if ospf_redist_bgp_metric_type:
-            cli += ' ospf-redist-bgp-metric-type ' + ospf_redist_bgp_metric_type
+            cli += ' ospf-redist-bgp-metric-type ' \
+                   + ospf_redist_bgp_metric_type
         if ospf_distance_external:
             cli += ' ospf-distance-external ' + ospf_distance_external
         if ospf_distance_internal:
@@ -714,7 +740,8 @@ def main():
         if ospf_stub_router is True:
             cli += ' ospf-stub-router-on-startup '
         if ospf_stub_router_period:
-            cli += ' ospf-stub-router-on-start-up-period ' + ospf_stub_router_period
+            cli += ' ospf-stub-router-on-start-up-period ' \
+                   + ospf_stub_router_period
         if ospf_bfd is True:
             cli += ' ospf-bfd-all-if '
         if ospf_snmp is True:
@@ -724,15 +751,19 @@ def main():
 
         if action == 'modify':
             if bgp_redist_static_routemap:
-                cli += ' bgp-redist-static-routemap ' + bgp_redist_static_routemap
+                cli += ' bgp-redist-static-routemap ' \
+                       + bgp_redist_static_routemap
             if bgp_redist_connected_routemap:
-                cli += ' bgp-redist-connected-routemap ' + bgp_redist_connected_routemap
+                cli += ' bgp-redist-connected-routemap ' \
+                       + bgp_redist_connected_routemap
             if bgp_redist_ospf_routemap:
                 cli += ' bgp-redist-ospf-routemap ' + bgp_redist_ospf_routemap
             if ospf_redist_static_routemap:
-                cli += ' ospf-redist-static-routemap ' + ospf_redist_static_routemap
+                cli += ' ospf-redist-static-routemap ' \
+                       + ospf_redist_static_routemap
             if ospf_redist_connected_routemap:
-                cli += ' ospf-redist-connected-routemap ' + ospf_redist_connected_routemap
+                cli += ' ospf-redist-connected-routemap ' \
+                       + ospf_redist_connected_routemap
             if ospf_redist_bgp_routemap:
                 cli += ' ospf-redist-bgp-routemap ' + ospf_redist_bgp_routemap
 

@@ -1,19 +1,22 @@
 #!/usr/bin/python
 """ PN CLI vlan-create/vlan-delete/vlan-modify """
 
-# Copyright 2016 Pluribus Networks
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file is part of Ansible
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Ansible is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Ansible is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
@@ -120,11 +123,11 @@ EXAMPLES = """
 
 RETURN = """
 stdout:
-  description: set of responses from the vrouter command.
+  description: set of responses from the vlan command.
   returned: always
   type: list
 stderr:
-  description: set of error responses from the vrouter command.
+  description: set of error responses from the vlan command.
   returned: on error
   type: list
 msg:
@@ -132,7 +135,8 @@ msg:
   returned: always
   type: str
 changed:
-  description: Indicates whether the module applied any configurations on the target.
+  description: Indicates whether the module applied any configurations on the
+  target.
   returned: always
   type: bool
 """
@@ -322,20 +326,20 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str', default='local'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
             pn_vlanid=dict(required=True, type='str'),
-            pn_scope=dict(required=False, type='str',
-                          choices=['fabric', 'local', 'cluster'], default='fabric'),
-            pn_vnet=dict(required=False, type='str'),
-            pn_vxlan=dict(required=False, type='str'),
-            pn_vxlan_mode=dict(required=False, type='str'),
-            pn_public_vlan=dict(required=False, type='str'),
-            pn_description=dict(required=False, type='str'),
-            pn_stats=dict(required=False, type='bool'),
-            pn_ports=dict(required=False, type='str'),
-            pn_untagged_ports=dict(required=False, type='str')
+            pn_scope=dict(type='str',
+                          choices=['fabric', 'local', 'cluster']),
+            pn_vnet=dict(type='str'),
+            pn_vxlan=dict(type='str'),
+            pn_vxlan_mode=dict(type='str'),
+            pn_public_vlan=dict(type='str'),
+            pn_description=dict(type='str'),
+            pn_stats=dict(type='bool'),
+            pn_ports=dict(type='str'),
+            pn_untagged_ports=dict(type='str')
         ),
         required_if=(
             ["pn_action", "create", ["pn_vlanid", "pn_scope"]],
@@ -359,7 +363,8 @@ def main():
 
     for vlan in vlan_list:
         if vlan not in range(MIN_VLAN_ID, MAX_VLAN_ID+1):
-            message += 'Invalid VLAN ID %s. VLAN ID must be between 2 and 4092\n' % vlan
+            message += 'Invalid VLAN ID %s. VLAN ID must be ' \
+                       'between 2 and 4092\n' % vlan
             module.fail_json(
                 stderr=message,
                 msg="VLAN configuration failed"

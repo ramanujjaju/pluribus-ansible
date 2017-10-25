@@ -30,7 +30,8 @@ short_description: CLI command to add/remove/modify vrouter-interface-config.
 description:
   - Execute vrouter-interface-config-add, vrouter-interface-config-remove,
     vrouter-interface-config-modify command.
-  - You can add/remove/modify interface configurations to/from vRouter services.
+  - You can add/remove/modify interface configurations to/from
+    vRouter services.
 options:
   pn_cliusername:
     description:
@@ -181,15 +182,18 @@ RETURN = """
 command:
   description: the CLI command run on the target node.
 stdout:
-  description: set of responses from the vrouter command.
+  description: set of responses from the vrouter interface
+  config command.
   returned: always
   type: list
 stderr:
-  description: set of error responses from the vrouter command.
+  description: set of error responses from the vrouter
+  interface config command.
   returned: on error
   type: list
 changed:
-  description: indicates whether the CLI caused changes on the target.
+  description: indicates whether the CLI caused changes on the
+  target.
   returned: always
   type: bool
 """
@@ -251,7 +255,8 @@ def check_cli(module):
     VROUTER_EXISTS = True if vrouter in out else False
 
     # Check for nic
-    check_nic = show_cli + ' vrouter-interface-config-show vrouter-name %s ' % vrouter
+    check_nic = show_cli + ' vrouter-interface-config-show ' \
+                           ' vrouter-name %s ' % vrouter
     check_nic += ' nic %s format nic no-show-headers' % nic
     check_nic = shlex.split(check_nic)
     out = module.run_command(check_nic)[1]
@@ -301,7 +306,8 @@ def main():
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str', choices=['add', 'remove', 'modify']),
+            pn_action=dict(required=True, type='str',
+                           choices=['add', 'remove', 'modify']),
             pn_vrouter=dict(required=True, type='str'),
             pn_nic=dict(required=True, type='str'),
             pn_ospf_hello_int=dict(type='str'),
@@ -312,8 +318,10 @@ def main():
             pn_ospf_msg_digestid=dict(type='str'),
             pn_ospf_msg_digestkey=dict(type='str'),
             pn_ospf_passive_if=dict(type='bool'),
-            pn_ospf_network_type=dict(type='str', choices=['default', 'point-to-point']),
-            pn_ospf_bfd=dict(type='str', choices=['default', 'enable', 'disable']),
+            pn_ospf_network_type=dict(type='str',
+                                      choices=['default', 'point-to-point']),
+            pn_ospf_bfd=dict(type='str',
+                             choices=['default', 'enable', 'disable']),
             pn_bfd_interval=dict(type='str'),
             pn_bfd_min_rx=dict(type='str'),
             pn_bfd_multiplier=dict(type='str'),

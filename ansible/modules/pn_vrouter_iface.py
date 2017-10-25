@@ -109,8 +109,8 @@ options:
     type: str
   pn_vrrp_priority:
     description:
-      - Speicfies the priority for the VRRP interface. This is a value between
-         1 (lowest) and 255 (highest).
+      - Speicfies the priority for the VRRP interface. This is a value
+        between 1 (lowest) and 255 (highest).
     type: int
   pn_vrrp_adv_int:
     description:
@@ -127,7 +127,8 @@ options:
     type: str
   pn_nic:
     description:
-      - Virtual NIC assigned to interface. Used for vrouter-interface remove/modify.
+      - Virtual NIC assigned to interface.
+        Used for vrouter-interface remove/modify.
     type: str
   pn_mtu:
     description:
@@ -168,7 +169,7 @@ EXAMPLES = """
     pn_action: 'remove'
     pn_vrouter: 'ansible-vrouter'
     pn_nic: 'eth1.101'
-    
+
 - name: Modify vrouter-interface
   pn_vrouter_iface:
     pn_cliusername: admin
@@ -184,15 +185,18 @@ RETURN = """
 command:
   description: the CLI command run on the target node.
 stdout:
-  description: set of responses from the vrouter command.
+  description: set of responses from the vrouter interface
+  command.
   returned: always
   type: list
 stderr:
-  description: set of error responses from the vrouter command.
+  description: set of error responses from the vrouter
+  interface command.
   returned: on error
   type: list
 changed:
-  description: indicates whether the CLI caused changes on the target.
+  description: indicates whether the CLI caused changes on the
+  target.
   returned: always
   type: bool
 """
@@ -282,8 +286,8 @@ def check_cli(module):
 
 def get_nic(module):
     """
-    This module checks if VRRP interface can be added. If No, return VRRP_EXISTS
-    as True.
+    This module checks if VRRP interface can be added. If No,
+    return VRRP_EXISTS as True.
     If Yes, fetch the nic string from the primary interface and return nic and
     VRRP_EXISTS as False.
     :param module: The Ansible module to fetch input parameters
@@ -363,17 +367,22 @@ def main():
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str', choices=['add', 'remove', 'modify']),
+            pn_action=dict(required=True, type='str',
+                           choices=['add', 'remove', 'modify']),
             pn_vrouter=dict(required=True, type='str'),
             pn_vlan=dict(type='str'),
             pn_interface_ip=dict(required=True, type='str'),
-            pn_assignment=dict(type='str', choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
+            pn_assignment=dict(type='str',
+                               choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
             pn_vnet=dict(type='str'),
-            pn_vlan_type=dict(type='str', choices=['public', 'private']),
-            pn_interface=dict(type='str', choices=['mgmt', 'data', 'span']),
+            pn_vlan_type=dict(type='str',
+                              choices=['public', 'private']),
+            pn_interface=dict(type='str',
+                              choices=['mgmt', 'data', 'span']),
             pn_alias=dict(type='str'),
             pn_exclusive=dict(type='bool'),
-            pn_nic_state=dict(type='str', choices=['enable', 'disable']),
+            pn_nic_state=dict(type='str',
+                              choices=['enable', 'disable']),
             pn_vrrp_id=dict(type='str'),
             pn_vrrp_primary=dict(type='str'),
             pn_vrrp_priority=dict(type='str'),
@@ -382,7 +391,8 @@ def main():
             pn_secondary_macs=dict(type='str'),
             pn_mtu=dict(type='str'),
             pn_nic=dict(type='str'),
-            pn_if_nat_realm=dict(type='str', choices=['internal', 'external'])
+            pn_if_nat_realm=dict(type='str',
+                                 choices=['internal', 'external'])
         )
     )
 
@@ -450,8 +460,8 @@ def main():
             else:
                 if INTERFACE_EXISTS is True:
                     module.fail_json(
-                        msg=('vRouter interface on %s already exists. Check the '
-                             'IP address(es)' % vrouter)
+                        msg=('vRouter interface on %s already exists. '
+                             'Check the IP address(es)' % vrouter)
                     )
                 cli += ' %s vrouter-name %s ' % (command, vrouter)
                 cli += ' ip %s ' % interface_ip
