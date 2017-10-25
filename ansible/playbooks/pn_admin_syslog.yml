@@ -1,0 +1,25 @@
+---
+
+
+- name: admin syslog module
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: admin-syslog functionality
+      pn_admin_syslog:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the CLI on.
+        pn_action: "delete"                             #admin-syslog configuration command: create/delete/modify.
+        pn_name: "football"                       #Specify the name of the admin-syslog.
+        pn_scope: "local"                       #Specify the name of the scope. local/fabric
+        pn_host: "hello2"
+        #pn_port: "514"
+        #pn_transport: 'udp'                          # tcp-tls/udp
+        #pn_message_format: 'legacy'                     # structured/legacy
+      register: output
+    - debug:
+        var: output

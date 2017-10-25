@@ -1,0 +1,100 @@
+---
+
+
+- name: snmp community module
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-community functionality
+      pn_snmp_community:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #vRouter configuration command: create/delete/modify.
+        pn_community_string: "cricket"                       #Specify the name of the vRouter.
+        pn_community_type: "read-write"                       #Specify the name of the vnet. Required for create.
+      register: output
+    - debug:
+        var: output
+
+
+- name: snmp user module
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-user functionality
+      pn_snmp_user:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #vRouter configuration command: create/delete/modify.
+        pn_user_name: "cricket1"                       #Specify the name of the vRouter.
+      register: output
+    - debug:
+        var: output
+
+
+- name: aaa tacacs module
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: aaa-tacacs functionality
+      pn_aaa_tacacs:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #aaa tacacs configuration command: create/delete/modify.
+        pn_scope: "local"                               # local/fabric
+        pn_name: "cricket"
+        pn_server: "server3"
+        #pn_port:
+        #pn_secret:
+        #pn_priority:
+        #pn_authen_method:                               # pap/chap/ms-chap
+        #pn_service:
+        #pn_service_shell:
+        #pn_service_vtysh:
+        #pn_authen: True
+        #pn_authen_local: True
+        #pn_sess_acct: True
+        #pn_cmd_acct: True
+        #pn_acct_local: True
+        #pn_author_local: True
+        #pn_cmd_author: True
+        #pn_sess_author: True
+      register: output
+    - debug:
+        var: output
+
+
+- name: admin syslog module
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: admin-syslog functionality
+      pn_admin_syslog:
+        pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "ansible-spine1"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #admin-syslog configuration command: create/delete/modify.
+        pn_name: "cricket"                       #Specify the name of the admin-syslog.
+        pn_scope: "local"                       #Specify the name of the scope. local/fabric
+        pn_host: "spine1"
+        #pn_port: "514"
+        #pn_transport: 'udp'                          # tcp-tls/udp
+        #pn_message_format: 'legacy'                     # structured/legacy
+      register: output
+    - debug:
+        var: output
