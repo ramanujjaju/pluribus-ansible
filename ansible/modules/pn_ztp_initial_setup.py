@@ -331,14 +331,18 @@ def ports_modify_jumbo(module, modify_flag):
     clicopy = cli
     trunk_ports = []
     cli += ' switch-local port-show format port,trunk status trunk no-show-headers'
-    cli_out = run_cli(module, cli).strip().split('\n')
-    for output in cli_out:
-        output = output.strip().split()
-        port, trunk_name = output[0], output[1]
-        trunk_ports.append(port)
-        cli = clicopy
-        cli += 'trunk-modify name %s jumbo ' % trunk_name
-        run_cli(module, cli)
+    cli_out = run_cli(module, cli)
+    if cli_out == 'Success':
+        pass
+    else:
+        cli_out = cli_out.strip().split('\n')
+        for output in cli_out:
+            output = output.strip().split()
+            port, trunk_name = output[0], output[1]
+            trunk_ports.append(port)
+            cli = clicopy
+            cli += 'trunk-modify name %s jumbo ' % trunk_name
+            run_cli(module, cli)
 
     cli = clicopy
     cli += ' switch-local port-config-show format port no-show-headers'

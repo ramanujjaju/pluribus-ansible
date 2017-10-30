@@ -223,7 +223,8 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
-        cli += ' router-type hardware proto-multi %s ospf-redistribute %s ' % (pim_ssm, pn_ospf_redistribute)
+        cli += ' router-type hardware proto-multi %s ' % pim_ssm
+        cli += ' ospf-redistribute %s ' % pn_ospf_redistribute
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
@@ -258,6 +259,8 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
     """
     global CHANGED_FLAG
     vrouter_name = get_vrouter_name(module, switch)
+    ospf_area_id = module.params['pn_ospf_area_id']
+    addr_type = module.params['pn_addr_type']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -315,8 +318,55 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
             if module.params['pn_jumbo_frames'] == True:
                 cli += ' mtu 9216'
             run_cli(module, cli)
+            CHANGED_FLAG.append(True)
             output += ' %s: Added vrouter interface with ip %s to %s \n' % (
                 switch, ip_vip, vrouter_name
+            )
+
+    ipv4 = list_ips[0].split('.')
+
+    if ipv4:
+        cli = clicopy
+        cli += ' vrouter-ospf-show'
+        cli += ' network %s format switch no-show-headers ' % ipv4
+        already_added = run_cli(module, cli).split()
+
+        if vrouter_name in already_added:
+            pass
+        else:
+            cli = clicopy
+            cli += ' vrouter-ospf-add vrouter-name ' + vrouter_name
+            cli += ' network %s ospf-area %s' % (ipv4,
+                                             ospf_area_id)
+
+            if 'Success' in run_cli(module, cli):
+                output += ' Added OSPF interface %s to %s \n' % (
+                    ipv4, vrouter_name
+                )
+                CHANGED_FLAG.append(True)
+
+    if addr_type == 'ipv4_ipv6':
+
+        ipv6 = list_ips[1]
+        cli = clicopy
+        cli += 'vrouter-interface-show vrouter-name %s' % vrouter_name
+        cli += ' ip2 %s format nic no-show-headers ' % ipv6
+        nic = run_cli(module, cli).split()
+        nic = list(set(nic))
+        nic.remove(vrouter_name)
+        nic = nic[0]
+
+        cli = clicopy
+        cli += 'vrouter-ospf6-show nic %s format switch no-show-headers ' % nic
+        ipv6_vrouter = run_cli(module, cli).split()
+
+        if vrouter_name not in ipv6_vrouter:
+            cli = clicopy
+            cli += ' vrouter-ospf6-add vrouter-name %s' % vrouter_name
+            cli += ' nic %s ospf6-area 0.0.0.0 ' % nic
+            run_cli(module, cli)
+            output += ' %s: Added OSPF6 nic %s to %s \n' % (
+                vrouter_name, nic, vrouter_name
             )
             CHANGED_FLAG.append(True)
 
@@ -584,6 +634,7 @@ def main():
             pn_csv_data=dict(required=True, type='str'),
             pn_pim_ssm=dict(required=False, type='bool'),
             pn_jumbo_frames=dict(required=False, type='bool', default=False),
+            pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_ospf_redistribute=dict(required=False, type='str',
                                     choices=['none', 'static', 'connected',
                                             'rip', 'ospf'],

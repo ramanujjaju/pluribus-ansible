@@ -90,7 +90,7 @@
         pn_pim_ssm: True                 	# Variable to specify pim_ssm for ospf
         pn_jumbo_frames: True                   # Flag to assign mtu Default: False.
         pn_addr_type: 'ipv4_ipv6'
-        pn_ospf_redistribute: 'connected'       # Variable to configure ospf redistribute
+        pn_ospf_redistribute: 'none'            # Variable to configure ospf redistribute
       register: vrrp_out                        # Variable to hold/register output of the above tasks.
       until:  vrrp_out.failed != true           # If error pops up it will retry the code
       retries: 3                                # This is the retries count
