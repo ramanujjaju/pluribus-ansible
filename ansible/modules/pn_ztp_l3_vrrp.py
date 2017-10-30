@@ -323,7 +323,7 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
                 switch, ip_vip, vrouter_name
             )
 
-    ipv4 = list_ips[0].split('.')
+    ipv4 = list_ips[0]
 
     if ipv4:
         cli = clicopy
