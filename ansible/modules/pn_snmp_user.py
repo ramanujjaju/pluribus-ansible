@@ -32,7 +32,7 @@ def pn_cli(module):
     password = module.params['pn_clipassword']
     cliswitch = module.params['pn_cliswitch']
 
-    cli = '/usr/bin/cli --quiet '
+    cli = '/usr/bin/cli --quiet --script-password '
 
     if username and password:
         cli += '--user "%s":"%s" ' % (username, password)
@@ -95,20 +95,30 @@ def main():
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str', choices=['create', 'delete']),
+            pn_action=dict(required=True, type='str', choices=['create', 'delete', 'modify']),
             pn_user_name=dict(required=True, type='str'),
+            pn_auth=dict(required=False, type='bool', default=False),
+            pn_priv=dict(required=False, type='bool', default=False),
+            pn_auth_pass=dict(required=False, type='str'),
+            pn_priv_pass=dict(required=False, type='str'),
+            pn_auth_hash=dict(required=False, type='str', choices=['sha', 'md5']),
         )
     )
 
     user_name = module.params['pn_user_name']
     action = module.params['pn_action']
+    auth = module.params['pn_auth']
+    priv = module.params['pn_priv']
+    auth_pass = module.params['pn_auth_pass']
+    priv_pass = module.params['pn_priv_pass']
+    auth_hash = module.params['pn_auth_hash']
 
     if action == 'create':
         if check_user(module, user_name):
             module.fail_json(
                 msg='snmp-user with name %s already present in the switch' % user_name
             )
-    elif action == 'delete':
+    elif action == 'delete' or action == 'modify':
         if not check_user(module, user_name):
             module.fail_json(
                 msg='snmp-user with name %s not present in the switch' % user_name
@@ -117,9 +127,24 @@ def main():
         module.fail_json(
             msg='snmp-user action %s not supported in this playbook. Use create/delete' % action
         )
-    
-    cli = pn_cli(module)   
+
+    cli = pn_cli(module)
     cli += action + ' user-name ' + user_name
+
+    if action != 'delete':
+        if auth or auth_hash:
+            cli += ' auth'
+            cli += ' auth-password %s' % auth_pass
+            if auth_hash:
+                cli += ' auth-hash %s' % auth_hash
+        else:
+            cli += ' no-auth'
+
+        if priv:
+            cli += ' priv'
+            cli += ' priv-password %s' % priv_pass
+        else:
+            cli += ' no-priv'
 
     run_cli(module, cli)
 

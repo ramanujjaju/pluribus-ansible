@@ -12,9 +12,15 @@
       pn_snmp_user:
         pn_cliusername: "{{ USERNAME }}"                   #Provide login username if user is not root.
         pn_clipassword: "{{ PASSWORD }}"                         #Provide login password if user is not root.
-        pn_cliswitch: "ansible-leaf4"                  #Target switch to run the CLI on.
-        pn_action: "delete"                             #snmp-user configuration command: create/delete.
-        pn_user_name: "snmp_user_name"                   
+        pn_cliswitch: "ansible-leaf3"                  #Target switch to run the CLI on.
+        pn_action: "modify"                             #snmp-user configuration command: create/delete.
+        pn_user_name: "snmp_user_name1"                   
+        pn_auth: False
+        pn_priv: False
+        #pn_auth_pass: 'test1234'
+        #pn_priv_pass: 'test1234'
+        #pn_auth_hash: 'sha'                                 # options: md5/sha
+               
       register: output
     - debug:
         var: output
