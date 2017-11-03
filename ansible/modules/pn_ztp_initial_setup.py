@@ -66,9 +66,9 @@ options:
       type: str
       choices: ['mgmt', 'in-band']
       default: 'mgmt'
-    pn_toggle_40g:
+    pn_toggle_port_speed:
       description:
-        - Flag to indicate if 40g ports should be converted to 10g ports or not.
+        - Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
       required: False
       default: True
       type: bool
@@ -466,78 +466,66 @@ def enable_web_api(module):
     run_cli(module, cli)
 
 
-def toggle_40g_local(module):
+def toggle(module, ports, local_ports, toggle_speed, port_speed, max_ports):
     """
-    Method to toggle 40g ports to 10g ports.
+    Method to toggle 40g/100g ports to 10g/25g ports.
     :param module: The Ansible module to fetch input parameters.
     :return: The output messages for assignment.
     """
     output = ''
-    splitter_40g_ports = []
+    splitter_ports = []
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' switch-local lldp-show format local-port no-show-headers '
-    local_ports = run_cli(module, cli).split()
 
-    cli = clicopy
-    cli += ' switch-local port-config-show format port no-show-headers '
-    max_ports = run_cli(module, cli).split()
+    ports_to_modify = list(set(ports) - set(local_ports))
 
+    for port in ports_to_modify:
+        next_port = str(int(port) + 1)
+        cli = clicopy
+        cli += ' switch-local'
+        cli += ' port-show port %s format bezel-port' % next_port
+        cli += ' no-show-headers'
+        bezel_port = run_cli(module, cli).split()[0]
 
-    cli = clicopy
-    cli += ' switch-local port-config-show speed 40g '
-    cli += ' format port no-show-headers '
-    ports_40g = run_cli(module, cli)
-    if len(ports_40g) > 0 and ports_40g != 'Success':
-        ports_40g = ports_40g.split()
-        ports_to_modify = list(set(ports_40g) - set(local_ports))
-        for port in ports_to_modify:
-            next_port = str(int(port) + 1)
+        if '.2' in bezel_port:
+            end_port = int(port) + 3
+            range_port = port + '-' + str(end_port)
+
             cli = clicopy
-            cli += ' switch-local'
-            cli += ' port-show port %s format bezel-port' % next_port
-            cli += ' no-show-headers'
-            bezel_port = run_cli(module, cli).split()[0]
+            cli += ' switch-local port-config-modify port %s ' % port
+            cli += ' disable '
+            output += 'port ' + port + ' disabled'
+            output += run_cli(module, cli)
 
-            if '.2' in bezel_port:
-                end_port = int(port) + 3
-                range_port = port + '-' + str(end_port)
+            cli = clicopy
+            cli += ' switch-local port-config-modify port %s ' % port
+            cli += ' speed %s ' % toggle_speed
+            output += 'port ' + port + ' converted to %s' % toggle_speed
+            output += run_cli(module, cli)
 
-                cli = clicopy
-                cli += ' switch-local port-config-modify port %s ' % port
-                cli += ' disable '
-                output += 'port ' + port + ' disabled'
-                output += run_cli(module, cli)
+            cli = clicopy
+            cli += ' switch-local port-config-modify port %s ' % range_port
+            cli += ' enable '
+            output += 'port range_port ' + range_port + '  enabled'
+            output += run_cli(module, cli)
 
-                cli = clicopy
-                cli += ' switch-local port-config-modify port %s ' % port
-                cli += ' speed 10g '
-                output += 'port ' + port + ' converted to 10g'
-                output += run_cli(module, cli)
+            splitter_ports.append(range(int(port), int(port)+4))
 
-                cli = clicopy
-                cli += ' switch-local port-config-modify port %s ' % range_port
-                cli += ' enable '
-                output += 'port range_port ' + range_port + '  enabled'
-                output += run_cli(module, cli)
-
-                splitter_40g_ports.append(range(int(port), int(port)+4))
-
-        time.sleep(10)
+    time.sleep(10)
 
     cli = clicopy
     cli += ' switch-local lldp-show format local-port no-show-headers '
     lldp_local_ports = run_cli(module, cli).split()
-    active_40g_ports = list(set(lldp_local_ports) - set(local_ports))
+    active_ports = list(set(lldp_local_ports) - set(local_ports))
 
-    if splitter_40g_ports:
-        for ports_list in splitter_40g_ports[:]:
-            for port in active_40g_ports:
+    if splitter_ports:
+        for ports_list in splitter_ports[:]:
+            for port in active_ports:
                 if int(port) in ports_list:
-                    if ports_list in splitter_40g_ports:
-                        splitter_40g_ports.remove(ports_list)
+                    if ports_list in splitter_ports:
+                        splitter_ports.remove(ports_list)
 
-    for port_list in splitter_40g_ports:
+    for port_list in splitter_ports:
         first_port = port_list[0]
         for port in port_list:
             if int(port) > len(max_ports):
@@ -550,11 +538,47 @@ def toggle_40g_local(module):
                 output += 'port ' + str(port) + '  disabled'
         cli = clicopy
         cli += ' switch-local port-config-modify port %s ' % first_port
-        cli += ' speed 40g '
+        cli += ' speed %s ' % port_speed
         output += run_cli(module, cli)
-        output += 'port ' + str(first_port) + ' is now 40g'
+        output += 'port ' + str(first_port) + ' is now %s ' % port_speed
 
     return output
+
+
+def toggle_local(module):
+    """
+    Method to toggle 40g/100g ports to 10g/25g ports.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output messages for assignment.
+    """
+    output = ''
+    ports_40g, ports_100g = [], []
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' switch-local lldp-show format local-port no-show-headers '
+    local_ports = run_cli(module, cli).split()
+
+    cli = clicopy
+    cli += ' switch-local port-config-show format port,speed parsable-delim , '
+    max_ports = run_cli(module, cli).split('\n')
+
+    for port_info in max_ports:
+        if port_info:
+            port_info = port_info.strip().split(',')
+            port, speed = port_info[0], port_info[1]
+            if '40g' in speed:
+                ports_40g.append(port)
+            if '100g' in speed:
+                ports_100g.append(port)
+
+    if ports_40g:
+        output += toggle(module, ports_40g, local_ports, '10g', '40g', max_ports)
+
+    if ports_100g:
+        output += toggle(module, ports_100g, local_ports, '25g', '100g', max_ports)
+
+    return output
+
 
 
 def assign_inband_ip(module):
@@ -614,7 +638,7 @@ def main():
         pn_fabric_control_network=dict(required=False, type='str',
                                        choices=['mgmt', 'in-band'],
                                        default='mgmt'),
-        pn_toggle_40g=dict(required=False, type='bool', default=True),
+        pn_toggle_port_speed=dict(required=False, type='bool', default=True),
         pn_spine_list=dict(required=False, type='list', default=[]),
         pn_leaf_list=dict(required=False, type='list', default=[]),
         pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
@@ -634,7 +658,7 @@ def main():
     fabric_name = module.params['pn_fabric_name']
     fabric_network = module.params['pn_fabric_network']
     control_network = module.params['pn_fabric_control_network']
-    toggle_40g_flag = module.params['pn_toggle_40g']
+    toggle_flag = module.params['pn_toggle_port_speed']
     current_switch = module.params['pn_current_switch']
     results = []
     global CHANGED_FLAG
@@ -703,15 +727,16 @@ def main():
         'output': 'Ports enabled'
     })
 
-    # Toggle 40g ports to 10g
-    if toggle_40g_flag:
-        if toggle_40g_local(module):
-            json_msg = {
-                'switch': current_switch,
-                'output': 'Toggled 40G ports to 10G'
-            }
+    # Toggle 40g/100g ports to 10g/25g
+    if toggle_flag:
+        if toggle_local(module):
             CHANGED_FLAG.append(True)
-            results.append(json_msg)
+
+        json_msg = {
+            'switch': current_switch,
+            'output': 'Toggled 40G/100g ports to 10G/25g '
+        }
+        results.append(json_msg)
 
     # Assign in-band ips.
     out = assign_inband_ip(module)
