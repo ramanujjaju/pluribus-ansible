@@ -1107,6 +1107,58 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     return output
 
 
+def make_interface_passive(module):
+    """
+    Method to make VRRP interfaces ospf passive.
+    :param module: The Ansible module to fetch input parameters.
+    :return: String describing if ospf passive interfaces changed or not.
+    """
+    output = ''
+    cli = pn_cli(module)
+    clicopy = cli
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+
+    for switch in switch_list:
+        vrname = "%s-vrouter" % switch
+        cli = clicopy
+        cli += ' switch %s vrouter-interface-config-show vrouter-name ' % switch
+        cli += ' %s format nic,ospf-passive-if parsable-delim ,' % vrname
+        pass_intf = run_cli(module, cli).split()
+        passv_info = {}
+        for intf in pass_intf:
+            if not intf:
+                break
+            vrname, intf_index, passv = intf.split(',')
+            passv_info[intf_index] = passv
+
+        cli = clicopy
+        cli += ' switch %s vrouter-interface-show vrouter-name %s ' % (switch, vrname)
+        cli += ' format is-vip,is-primary,nic parsable-delim ,'
+        intf_info = run_cli(module, cli).split()
+        for intf in intf_info:
+            if not intf:
+                output += "No router interface exist"
+            vrname, is_vip, is_primary, intf_index = intf.split(',')
+            if is_vip == 'true' or is_primary == 'true':
+                if intf_index in passv_info:
+                    if passv_info[intf_index] == "false":
+                        cli = clicopy
+                        cli += ' vrouter-interface-config-modify vrouter-name %s ' % vrname
+                        cli += ' nic %s ospf-passive-if ' % intf_index
+                        run_cli(module, cli)
+                else:
+                    cli = clicopy
+                    cli += ' vrouter-interface-config-add vrouter-name %s ' % vrname
+                    cli += ' nic %s ospf-passive-if ' % intf_index
+                    run_cli(module, cli)
+                    output += '%s: Added OSPF nic %s to %s \n' % (
+                    vrname, intf_index, vrname
+                )
+                CHANGED_FLAG.append(True)
+
+    return output
+
+
 def assign_leafcluster_ospf_interface(module, dict_area_id):
     """
     Method to create interfaces and add ospf neighbor for leaf cluster.
@@ -1221,6 +1273,7 @@ def main():
         message += add_ospf_neighbor(module, dict_area_id)
         message += add_ospf_redistribute(module, vrouter_names)
         message += assign_leafcluster_ospf_interface(module, dict_area_id)
+        message += make_interface_passive(module)
 
     message_string = message
     results = []
