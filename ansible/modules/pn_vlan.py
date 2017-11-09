@@ -187,8 +187,6 @@ def run_cli(module, cli):
             stderr=err.strip(),
             msg='VLAN configuration failed'
         )
-    else:
-        return 'Success'
 
 
 def get_switch_name(module):
@@ -288,7 +286,7 @@ def delete_vlan(module, switch, vlanid):
     cli = pn_cli(module)
     cli += ' vlan-delete id %s' % (vlanid,)
     output = run_cli(module, cli)
-    if 'Success' in output:
+    if 'Deleted vlans:' in output:
         return ' %s: VLAN %s deleted \n' % (switch, vlanid)
 
 
