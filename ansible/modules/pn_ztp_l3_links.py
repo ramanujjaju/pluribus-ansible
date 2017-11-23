@@ -206,7 +206,7 @@ def run_cli(module, cli):
         return 'Success'
 
 
-def modify_stp(module, modify_flag):
+def modify_stp(module, modify_flag, switch):
     """
     Method to enable/disable STP (Spanning Tree Protocol) on all switches.
     :param module: The Ansible module to fetch input parameters.
@@ -217,24 +217,22 @@ def modify_stp(module, modify_flag):
     cli = pn_cli(module)
     clicopy = cli
 
-    for switch in (module.params['pn_spine_list'] +
-                   module.params['pn_leaf_list']):
+    cli = clicopy
+    cli += ' switch %s stp-show format enable ' % switch
+    current_state = run_cli(module, cli).split()[1]
+    if current_state != 'yes':
         cli = clicopy
-        cli += ' switch %s stp-show format enable ' % switch
-        current_state = run_cli(module, cli).split()[1]
-        if current_state != 'yes':
-            cli = clicopy
-            cli += ' switch ' + switch
-            cli += ' stp-modify ' + modify_flag
-            if 'Success' in run_cli(module, cli):
-                CHANGED_FLAG.append(True)
+        cli += ' switch ' + switch
+        cli += ' stp-modify ' + modify_flag
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
 
-        output += ' %s: STP enabled \n' % switch
+    output += ' %s: STP enabled \n' % switch
 
     return output
 
 
-def update_fabric_network_to_inband(module):
+def update_fabric_network_to_inband(module, switch):
     """
     Method to update fabric network type to in-band
     :param module: The Ansible module to fetch input parameters.
@@ -244,19 +242,17 @@ def update_fabric_network_to_inband(module):
     cli = pn_cli(module)
     clicopy = cli
 
-    for switch in (module.params['pn_spine_list'] +
-                   module.params['pn_leaf_list']):
+    cli = clicopy
+    cli += ' fabric-info format fabric-network '
+    fabric_network = run_cli(module, cli).split()[1]
+    if fabric_network != 'in-band':
         cli = clicopy
-        cli += ' fabric-info format fabric-network '
-        fabric_network = run_cli(module, cli).split()[1]
-        if fabric_network != 'in-band':
-            cli = clicopy
-            cli += ' switch ' + switch
-            cli += ' fabric-local-modify fabric-network in-band '
-            if 'Success' in run_cli(module, cli):
-                CHANGED_FLAG.append(True)
+        cli += ' switch ' + switch
+        cli += ' fabric-local-modify fabric-network in-band '
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
 
-        output += ' %s: Updated fabric network to in-band \n' % switch
+    output += ' %s: Updated fabric network to in-band \n' % switch
 
     return output
 
@@ -538,11 +534,6 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
     existing_vrouter = list(set(existing_vrouter))
 
     if vrouter_name not in existing_vrouter:
-        # Disable l3-port before creating vrouter interface on it
-        cli = clicopy
-        cli += ' switch %s port-config-modify port %s disable' % (switch, port)
-        run_cli(module, cli)
-
         # Add vrouter interface.
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
@@ -553,12 +544,6 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
         if module.params['pn_jumbo_frames'] == True:
             cli += ' mtu 9216'
         run_cli(module, cli)
-
-        # Enable l3-port after creating vrouter interface on it
-        cli = clicopy
-        cli += ' switch %s port-config-modify port %s enable' % (switch, port)
-        run_cli(module, cli)
-
         # Add BFD config to vrouter interface.
         if module.params['pn_bfd']:
             cli = clicopy
@@ -671,6 +656,34 @@ def assign_loopback_ip(module, loopback_address):
     return output
 
 
+def finding_initial_ip(module, current_switch, leaf_list):
+    """
+    Method to find the intial ip of the ipv4 addressing scheme.
+    :param module: The Ansible module to fetch input parameters.
+    :param available_ips_ipv4: The list of all possibe ipv4 addresses.
+    :param current_switch: The current switch in which the execution is
+                           taking place.
+    :param leaf_list: The list of all leafs.
+    :return: String describing output of configuration.
+    """
+    spine_list = list(module.params['pn_spine_list'])
+    spine_list = [x.strip() for x in spine_list]
+    spines = ','.join(spine_list)
+    count_output = 0
+
+    cli = pn_cli(module)
+    clicopy = cli
+
+    for leaf in leaf_list:
+        if leaf.strip() == current_switch.strip():
+            break
+        cli = clicopy
+        cli += " switch %s port-show hostname %s count-output | grep Count" %  (leaf, spines)
+        count_output += int(run_cli(module, cli).split(':')[1].strip())
+
+    return count_output
+
+
 def auto_configure_link_ips(module):
     """
     Method to auto configure link IPs for layer3 fabric.
@@ -682,45 +695,45 @@ def auto_configure_link_ips(module):
     addr_type = module.params['pn_addr_type']
     supernet_ipv4 = module.params['pn_supernet_ipv4']
     supernet_ipv6 = module.params['pn_supernet_ipv6']
+    current_switch = module.params['pn_current_switch']
     output = ''
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    switch_names = list(set(switch_names))
 
-    # Disable auto trunk on all switches.
-    for switch in switch_names:
-        modify_auto_trunk_setting(module, switch, 'disable')
+    if current_switch in leaf_list:
+        # Disable auto trunk on all switches.
+        modify_auto_trunk_setting(module, current_switch, 'disable')
+        for spine in spine_list:
+            # Disable auto trunk.
+            modify_auto_trunk_setting(module, spine, 'disable')
 
-    # Get the list of available link ips to assign.
-    if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-        available_ips_ipv4 = calculate_link_ip_addresses_ipv4(module.params['pn_net_address_ipv4'],
-                                                    module.params['pn_cidr_ipv4'],
-                                                    supernet_ipv4)
+        # Get the list of available link ips to assign.
+        count_output = finding_initial_ip(module, current_switch, leaf_list)
+        if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
+            count = 0
+            available_ips_ipv4 = calculate_link_ip_addresses_ipv4(module.params['pn_net_address_ipv4'],
+                                                                  module.params['pn_cidr_ipv4'],
+                                                                  supernet_ipv4)
 
-    # Get the list of available link ips to assign.
-    if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
-        if supernet_ipv6 == '127':
+            diff = 32 - int(supernet_ipv4)
+            count = (1 << diff) - 4
+            count = (count + 2) if count > 0 else 2
+            count = count * count_output
+            available_ips_ipv4 = available_ips_ipv4[count:]
+
+        # Get the list of available link ips to assign.
+        if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
             get_count = 2 if supernet_ipv6 == '127' else 3
             available_ips_ipv6 = calculate_link_ip_addresses_ipv6(module.params['pn_net_address_ipv6'],
-                                                        module.params['pn_cidr_ipv6'],
-                                                        supernet_ipv6, get_count)
+                                                                  module.params['pn_cidr_ipv6'],
+                                                                  supernet_ipv6, get_count)
+            for i in range(count_output):
+                available_ips_ipv6.next()
 
-    # Get the fabric name and create vnet name required for vrouter creation.
-    cli = clicopy
-    cli += ' fabric-node-show format fab-name no-show-headers '
-    fabric_name = list(set(run_cli(module, cli).split()))[0]
-    vnet_name = str(fabric_name) + '-global'
-
-    # Create vrouter on all switches.
-    for switch in switch_names:
-        output += create_vrouter(module, switch, vnet_name)
-    for spine in spine_list:
-        for leaf in leaf_list:
+        for spine in spine_list:
             cli = clicopy
-            cli += ' switch %s port-show hostname %s ' % (leaf, spine)
+            cli += ' switch %s port-show hostname %s ' % (current_switch, spine)
             cli += ' format port no-show-headers '
             leaf_port = run_cli(module, cli).split()
             leaf_port = list(set(leaf_port))
@@ -754,7 +767,7 @@ def auto_configure_link_ips(module):
                 lport = leaf_port[0]
 
                 cli = clicopy
-                cli += ' switch %s port-show port %s ' % (leaf, lport)
+                cli += ' switch %s port-show port %s ' % (current_switch, lport)
                 cli += ' format rport no-show-headers '
                 rport = run_cli(module, cli).split()
                 rport = list(set(rport))
@@ -764,7 +777,7 @@ def auto_configure_link_ips(module):
                     ip_ipv4 = available_ips_ipv4[0]
                     available_ips_ipv4.remove(ip_ipv4)
 
-                delete_trunk(module, spine, rport, leaf)
+                delete_trunk(module, spine, rport, current_switch)
                 output += create_interface(module, spine, ip_ipv4, ip_ipv6, rport, addr_type)
 
                 leaf_port.remove(lport)
@@ -782,15 +795,14 @@ def auto_configure_link_ips(module):
                             available_ips_ipv4.pop(0)
                             ip_count += 1
 
-                delete_trunk(module, leaf, lport, spine)
-                output += create_interface(module, leaf, ip_ipv4, ip_ipv6, lport, addr_type)
+                delete_trunk(module, current_switch, lport, spine)
+                output += create_interface(module, current_switch, ip_ipv4, ip_ipv6, lport, addr_type)
 
-    # Assign loopback ip to vrouters.
-    output += assign_loopback_ip(module, module.params['pn_loopback_ip'])
-
-    for switch in switch_names:
-        # Enable auto trunk.
-        modify_auto_trunk_setting(module, switch, 'enable')
+        # Enable auto trunk on all switches.
+        modify_auto_trunk_setting(module, current_switch, 'enable')
+        for spine in spine_list:
+            # Enable auto trunk.
+            modify_auto_trunk_setting(module, spine, 'enable')
 
     return output
 
@@ -801,6 +813,7 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
+            pn_current_switch=dict(required=False, type='str'),
             pn_addr_type=dict(required=False, type='str',
                               choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4'),
             pn_net_address_ipv4=dict(required=False, type='str'),
@@ -830,11 +843,11 @@ def main():
 
     # Update fabric network to in-band if flag is True
     if module.params['pn_update_fabric_to_inband']:
-        message += update_fabric_network_to_inband(module)
+        message += update_fabric_network_to_inband(module, module.params['pn_current_switch'])
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
-        message += modify_stp(module, 'enable')
+        message += modify_stp(module, 'enable', module.params['pn_current_switch'])
 
     message_string = message
     results = []

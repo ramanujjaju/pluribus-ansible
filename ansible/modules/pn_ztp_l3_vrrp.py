@@ -150,19 +150,6 @@ def run_cli(module, cli):
         return 'Success'
 
 
-def get_vrouter_name(module, switch_name):
-    """
-    Method to return name of the vrouter.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch_name: Name of the switch for which to find the vrouter.
-    :return: Vrouter name.
-    """
-    cli = pn_cli(module)
-    cli += ' vrouter-show location ' + switch_name
-    cli += ' format name no-show-headers '
-    return run_cli(module, cli).split()[0]
-
-
 def create_vlan(module, vlan_id, switch):
     """
     Method to create vlans.
@@ -189,60 +176,6 @@ def create_vlan(module, vlan_id, switch):
         return ''
 
 
-def create_vrouter(module, switch, vrrp_id, vnet_name):
-    """
-    Method to create vrouter and assign vrrp_id to the switches.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch: The switch name on which vrouter will be created.
-    :param vrrp_id: The vrrp_id to be assigned.
-    :param vnet_name: The name of the vnet for vrouter creation.
-    :return: String describing if vrouter got created or if it already exists.
-    """
-    global CHANGED_FLAG
-    output = ''
-    vrouter_name = switch + '-vrouter'
-
-    pn_ospf_redistribute = module.params['pn_ospf_redistribute']
-    pn_pim_ssm = module.params['pn_pim_ssm']
-
-    cli = pn_cli(module)
-    cli += ' switch ' + switch
-    clicopy = cli
-
-    if pn_pim_ssm == True:
-        pim_ssm = 'pim-ssm'
-    else:
-        pim_ssm = 'none'
-
-    # Check if vrouter already exists
-    cli += ' vrouter-show format name no-show-headers '
-    existing_vrouter_names = run_cli(module, cli).split()
-
-    # If vrouter doesn't exists then create it
-    if vrouter_name not in existing_vrouter_names:
-        cli = clicopy
-        cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
-            vrouter_name, vnet_name, vrrp_id)
-        cli += ' router-type hardware proto-multi %s ' % pim_ssm
-        cli += ' ospf-redistribute %s ' % pn_ospf_redistribute
-        run_cli(module, cli)
-        output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
-        CHANGED_FLAG.append(True)
-    else:
-        cli = clicopy
-        cli += ' vrouter-show name ' + vrouter_name
-        cli += ' format hw-vrrp-id no-show-headers'
-        hw_vrrp_id = run_cli(module, cli).split()[0]
-
-        if hw_vrrp_id != vrrp_id:
-            cli = clicopy
-            cli += ' vrouter-modify name %s hw-vrrp-id %s ' % (vrouter_name,
-                                                               vrrp_id)
-            run_cli(module, cli)
-            CHANGED_FLAG.append(True)
-
-    return output
-
 def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
                              vrrp_priority, list_vips, list_ips):
     """
@@ -258,7 +191,7 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
     :return: String describing if vrouter interface got added or not.
     """
     global CHANGED_FLAG
-    vrouter_name = get_vrouter_name(module, switch)
+    vrouter_name = switch + '-vrouter'
     ospf_area_id = module.params['pn_ospf_area_id']
     addr_type = module.params['pn_addr_type']
 
@@ -337,7 +270,7 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
             cli = clicopy
             cli += ' vrouter-ospf-add vrouter-name ' + vrouter_name
             cli += ' network %s ospf-area %s' % (ipv4,
-                                             ospf_area_id)
+                                                 ospf_area_id)
 
             if 'Success' in run_cli(module, cli):
                 output += ' Added OSPF interface %s to %s \n' % (
@@ -399,49 +332,7 @@ def create_cluster(module, switch, name, node1, node2):
         return ''
 
 
-def create_vrouter_without_vrrp(module, switch, vnet_name):
-    """
-    Method to create vrouter without assigning vrrp id to it.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch: The switch name on which vrouter will be created.
-    :param vnet_name: The name of the vnet for vrouter creation.
-    :return: String describing if vrouter got created or if it already exists.
-    """
-    global CHANGED_FLAG
-    vrouter_name = switch + '-vrouter'
-
-    pn_ospf_redistribute = module.params['pn_ospf_redistribute']
-    pn_pim_ssm = module.params['pn_pim_ssm']
-
-    if pn_pim_ssm == True:
-        pim_ssm = 'pim-ssm'
-    else:
-        pim_ssm = 'none'
-
-    cli = pn_cli(module)
-    cli += ' switch ' + switch
-    clicopy = cli
-
-    # Check if vrouter already exists
-    cli += ' vrouter-show format name no-show-headers '
-    existing_vrouter_names = run_cli(module, cli).split()
-
-    # If vrouter doesn't exists then create it
-    if vrouter_name not in existing_vrouter_names:
-        cli = clicopy
-        cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
-        cli += ' router-type hardware proto-multi %s' % pim_ssm
-        cli += ' ospf-redistribute %s' % pn_ospf_redistribute
-        run_cli(module, cli)
-        output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
-        CHANGED_FLAG.append(True)
-    else:
-        output = ''
-
-    return output
-
-
-def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
+def configure_vrrp_for_non_cluster_leafs(module, ip, ip_v6, non_cluster_leaf, vlan_id):
     """
     Method to configure vrrp for non-cluster switches.
     :param module: The Ansible module to fetch input parameters.
@@ -451,18 +342,12 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
     :return: String describing whether interfaces got added or not.
     """
     global CHANGED_FLAG
-    vrouter_name = get_vrouter_name(module, non_cluster_leaf)
-
-    ip_addr = ip.split('.')
-    fourth_octet = ip_addr[3].split('/')
-    subnet = fourth_octet[1]
-
-    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
-    ip_gateway = static_ip + '1' + '/' + subnet
+    vrouter_name = non_cluster_leaf + '-vrouter'
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-interface-show ip %s vlan %s ' % (ip_gateway, vlan_id)
+    cli += 'switch ' + non_cluster_leaf
+    cli += ' vrouter-interface-show ip %s vlan %s ' % (ip, vlan_id)
     cli += ' format switch no-show-headers '
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
@@ -472,14 +357,19 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
         cli += 'switch ' + non_cluster_leaf
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' vlan ' + vlan_id
-        cli += ' ip ' + ip_gateway
+        cli += ' ip ' + ip
+        if module.params['pn_addr_type'] == 'ipv4_ipv6':
+            cli += ' ip2 ' + ip_v6
         if module.params['pn_jumbo_frames'] == True:
             cli += ' mtu 9216'
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: Added vrouter interface with ip %s on %s \n' % (
-            non_cluster_leaf, ip_gateway, vrouter_name
-        )
+        output = ' %s: Added vrouter interface with ip %s' % (
+            non_cluster_leaf, ip)
+        if module.params['pn_addr_type'] == 'ipv4_ipv6':
+            output += ' ip2 %s' % ip_v6
+        output += ' to %s \n' % vrouter_name
+        return output
     else:
         return ''
 
@@ -501,15 +391,9 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
     name = node1 + '-to-' + node2 + '-cluster'
     list_vips = []
     addr_type = module.params['pn_addr_type']
-    vrouter_switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
 
     output = create_cluster(module, node2, name, node1, node2)
     output += create_vlan(module, vlan_id, node2)
-
-    vnet_name = get_global_vnet_name(module)
-
-    for switch in switch_list:
-        output += create_vrouter(module, switch, vrrp_id, vnet_name)
 
     list_vips.append(vrrp_ip)
     ip_addr = vrrp_ip.split('.')
@@ -545,7 +429,8 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
 
     return output
 
-def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip,
+
+def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip, ip_v6,
                                               non_cluster_leaf):
     """
     Method to configure VRRP for non clustered leafs.
@@ -555,10 +440,9 @@ def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip,
     :param non_cluster_leaf: Name of non-clustered leaf switch.
     :return: Output string of configuration.
     """
-    vnet_name = get_global_vnet_name(module)
-    output = create_vrouter_without_vrrp(module, non_cluster_leaf, vnet_name)
+    output = ''
     output += create_vlan(module, vlan_id, non_cluster_leaf)
-    output += configure_vrrp_for_non_cluster_leafs(module, ip,
+    output += configure_vrrp_for_non_cluster_leafs(module, ip, ip_v6,
                                                    non_cluster_leaf, vlan_id)
     return output
 
@@ -571,10 +455,7 @@ def configure_vrrp(module, csv_data):
     :return: Output string of configuration.
     """
     output = ''
-    vrrp_ipv6 = '' 
-    vnet_name = get_global_vnet_name(module)
-    for switch in module.params['pn_spine_list']:
-        output += create_vrouter_without_vrrp(module, switch, vnet_name)
+    vrrp_ipv6 = ''
 
     csv_data = csv_data.strip()
     csv_data_list = csv_data.split('\n')
@@ -592,21 +473,22 @@ def configure_vrrp(module, csv_data):
             if module.params['pn_addr_type'] == 'ipv4_ipv6':
                 vrrp_ipv6 = elements.pop(0).strip()
             leaf_switch_1 = elements.pop(0).strip()
-            if len(elements) > 2:
-                leaf_switch_2 = elements.pop(0).strip()
-                vrrp_id = elements.pop(0).strip()
-                active_switch = elements.pop(0).strip()
-                switch_list.append(leaf_switch_1)
-                switch_list.append(leaf_switch_2)
-                output += configure_vrrp_for_clustered_switches(module, vrrp_id,
-                                                                vrrp_ip, vrrp_ipv6,
-                                                                active_switch,
-                                                                vlan_id,
-                                                                switch_list)
+            if module.params['pn_current_switch'] == leaf_switch_1:
+                if len(elements) > 2:
+                    leaf_switch_2 = elements.pop(0).strip()
+                    vrrp_id = elements.pop(0).strip()
+                    active_switch = elements.pop(0).strip()
+                    switch_list.append(leaf_switch_1)
+                    switch_list.append(leaf_switch_2)
+                    output += configure_vrrp_for_clustered_switches(module, vrrp_id,
+                                                                    vrrp_ip, vrrp_ipv6,
+                                                                    active_switch,
+                                                                    vlan_id,
+                                                                    switch_list)
 
-            else:
-                output += configure_vrrp_for_non_clustered_switches(
-                    module, vlan_id, vrrp_ip, leaf_switch_1)
+                else:
+                    output += configure_vrrp_for_non_clustered_switches(
+                        module, vlan_id, vrrp_ip, vrrp_ipv6, leaf_switch_1)
 
     return output
 
@@ -632,26 +514,31 @@ def main():
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
+            pn_current_switch=dict(required=True, type='str'),
             pn_pim_ssm=dict(required=False, type='bool'),
             pn_jumbo_frames=dict(required=False, type='bool', default=False),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_ospf_redistribute=dict(required=False, type='str',
-                                    choices=['none', 'static', 'connected',
-                                            'rip', 'ospf'],
-                                    default='none'),
+                                      choices=['none', 'static', 'connected',
+                                               'rip', 'ospf'],
+                                      default='none'),
             pn_addr_type=dict(required=False, type='str',
-                                    choices=['ipv4', 'ipv6', 'ipv4_ipv6'],
-                                    default='ipv4'),
+                              choices=['ipv4', 'ipv6', 'ipv4_ipv6'],
+                              default='ipv4'),
         )
     )
 
     global CHANGED_FLAG
-    message = configure_vrrp(module, module.params['pn_csv_data'])
+    message = ''
+    leaf_list = module.params['pn_leaf_list']
+
+    if module.params['pn_current_switch'] in leaf_list:
+        message += configure_vrrp(module, module.params['pn_csv_data'])
 
     # Exit the module and return the required JSON.
     message_string = message
     results = []
-    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+    switch_list = module.params['pn_spine_list'] + leaf_list
     for switch in switch_list:
         replace_string = switch + ': '
 

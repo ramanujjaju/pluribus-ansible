@@ -18,6 +18,7 @@
 #
 
 import shlex
+import threading
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -92,6 +93,41 @@ msg:
 """
 
 CHANGED_FLAG = []
+result = []
+
+def eula_accept(module, username, password, switch_name, ip):
+    """
+    Method to accep the eula.
+    :param module: The Ansible module to fetch username and password.
+    :param username: The cli username to be used.
+    :param password: The new password to be input during eula-accept.
+    :param switch_name: The switch name to be processed on.
+    :param ip: The mgmt ip of the switch.
+    """
+    global result
+    global CHANGED_FLAG
+    cli = 'sshpass -p %s ' % password
+    cli += 'ssh -o StrictHostKeyChecking=no %s@%s ' % (username, ip)
+    cli += 'eula-show'
+    cli = shlex.split(cli)
+    rc, out, err = module.run_command(cli)
+    if not out:
+        cli = 'sshpass -p admin ssh -o StrictHostKeyChecking=no '
+        cli += '%s@%s -- --quiet --script-password ' % (username, ip)
+        cli += 'switch-setup-modify password %s ' % password
+        cli += 'switch-name %s eula-accepted true' % switch_name
+        cli = shlex.split(cli)
+        module.run_command(cli)
+        CHANGED_FLAG.append(True)
+        result.append({
+            'switch': switch_name,
+            'output': 'Eula accepted'
+        })
+    else:
+        result.append({
+            'switch': switch_name,
+            'output': 'Eula already accepted'
+        })
 
 
 def main():
@@ -132,38 +168,18 @@ def main():
             if leaf_ips:
                 switch_ips += leaf_ips.split(',')
 
-    result = []
+    global result
     count = 0
+    threads = []
 
     for ip in switch_ips:
-        cli = 'sshpass -p %s ' % password
-        cli += 'ssh -o StrictHostKeyChecking=no %s@%s ' % (username, ip)
-        cli += 'eula-show'
-
-        cli = shlex.split(cli)
-        rc, out, err = module.run_command(cli)
-
-        if not out:
-            cli = 'sshpass -p admin ssh -o StrictHostKeyChecking=no '
-            cli += '%s@%s -- --quiet --script-password ' % (username, ip)
-            cli += 'switch-setup-modify password %s ' % password
-            cli += 'switch-name %s eula-accepted true' % switch_list[count]
-
-            cli = shlex.split(cli)
-            module.run_command(cli)
-            CHANGED_FLAG.append(True)
-
-            result.append({
-                'switch': switch_list[count],
-                'output': 'Eula accepted'
-            })
-        else:
-            result.append({
-                'switch': switch_list[count],
-                'output': 'Eula already accepted'
-            })
-
+        threads.append(threading.Thread(target=eula_accept, args=(module, username, password, switch_list[count], ip,)))
         count += 1
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
 
     # Exit the module and return the required JSON
     module.exit_json(
