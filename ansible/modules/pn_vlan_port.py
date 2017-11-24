@@ -201,7 +201,8 @@ def main():
     vlan_vnet = module.params['pn_vlan_vnet']
     tag_untag = module.params['pn_tag_untag']
 
-    cli = pn_cli(module) + command
+    cli = pn_cli(module)
+    cli += ' ' + command
 
     if vlanid:
         cli += ' vlan-id ' + vlanid

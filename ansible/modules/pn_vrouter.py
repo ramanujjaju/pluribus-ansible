@@ -385,11 +385,6 @@ def check_cli(module):
     # Global flags
     global VROUTER_EXISTS, VROUTER_NAME_EXISTS
 
-    cliswitch = module.params['pn_cliswitch']
-    if cliswitch:
-        show_cli = show_cli.replace('switch ', '')
-        show_cli = show_cli.replace(cliswitch, '')
-
     # Get the name of the local switch
     location = show_cli + ' switch-setup-show format switch-name'
     location = shlex.split(location)
@@ -455,12 +450,12 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str', default='local'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
             pn_name=dict(required=True, type='str'),
-            pn_vnet=dict(required=True, type='str'),
-            pn_router_type=dict(required=True, type='str',
+            pn_vnet=dict(type='str'),
+            pn_router_type=dict(type='str',
                                 choices=['hardware', 'software']),
             pn_vnet_service_type=dict(type='str',
                                       choices=['dedicated', 'shared']),
