@@ -1,6 +1,5 @@
 #!/usr/bin/python
 """ PN Fabric Creation """
-
 #
 # This file is part of Ansible
 #
@@ -146,6 +145,17 @@ options:
         - Flag to enable STP at the end.
       required: False
       default: True
+      type: bool
+    pn_autotrunk:
+      description:
+        - Flag to enable/disable auto-trunk setting.
+      required: False
+      choices: ['enable', 'disable']
+      type: str
+    pn_autoneg:
+      description:
+        - Flag to enable/disable auto-neg for T2+ platforms.
+      required: False
       type: bool
 """
 
@@ -350,7 +360,8 @@ def ports_modify_jumbo(module, modify_flag):
     ports_to_modify = list(set(ports) - set(trunk_ports))
     ports_to_modify = ','.join(ports_to_modify)
     cli = clicopy
-    cli += 'switch-local port-config-modify port %s jumbo' % ports_to_modify
+    cli += ' switch-local port-config-modify port %s %s' \
+           % (ports_to_modify, modify_flag)
     return run_cli(module, cli)
 
 
@@ -454,6 +465,72 @@ def create_or_join_fabric(module, fabric_name, fabric_network):
                 return 'Switch already in the fabric'
 
     return run_cli(module, cli)
+
+
+def modify_auto_neg(module):
+    """
+    Module to enable/disable auto-neg for T2+ platforms.
+    :param module:
+    :return: Nothing
+    """
+    current_switch = module.params['pn_current_switch']
+    spines = module.params['pn_spine_list']
+
+    if current_switch in spines:
+        cli = pn_cli(module)
+        cli += ' switch-local bezel-portmap-show format port no-show-headers '
+        cli = shlex.split(cli)
+        out = module.run_command(cli)[1]
+        all_ports = out.splitlines()
+        all_ports = [port.strip() for port in all_ports]
+        time.sleep(1)
+
+        cli = pn_cli(module)
+        cli += ' switch-local lldp-show format local-port no-show-headers '
+        cli = shlex.split(cli)
+        out = module.run_command(cli)[1]
+        lldp_ports = out.splitlines()
+        lldp_ports = [port.strip() for port in lldp_ports]
+        time.sleep(1)
+
+        idle_ports = list(set(all_ports) ^ set(lldp_ports))
+        cli = pn_cli(module)
+        cli += ' switch-local port-config-modify port %s autoneg ' % ','.join(idle_ports)
+        cli = shlex.split(cli)
+        module.run_command(cli)
+        time.sleep(1)
+
+        cli = pn_cli(module)
+        cli += ' switch-local lldp-show format local-port no-show-headers '
+        cli = shlex.split(cli)
+        out = module.run_command(cli)[1]
+        lldp_ports = out.splitlines()
+        lldp_ports = [port.strip() for port in lldp_ports]
+        time.sleep(1)
+
+        idle_ports = list(set(all_ports) ^ set(lldp_ports))
+        cli = pn_cli(module)
+        cli += ' switch-local port-config-modify port %s no-autoneg ' % ','.join(idle_ports)
+        module.run_command(cli)
+        time.sleep(1)
+
+        return "Auto-neg Configured"
+
+
+def modify_auto_trunk(module, flag):
+    """
+    Method to enable/disable auto trunk setting of a switch.
+    :param module: The Ansible module to fetch input parameters.
+    :param flag: Enable/disable flag for the cli command.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module)
+    if flag.lower() == 'enable':
+        cli += ' system-settings-modify auto-trunk '
+        return run_cli(module, cli)
+    elif flag.lower() == 'disable':
+        cli += ' system-settings-modify no-auto-trunk '
+        return run_cli(module, cli)
 
 
 def enable_web_api(module):
@@ -580,7 +657,6 @@ def toggle_local(module):
     return output
 
 
-
 def assign_inband_ip(module):
     """
     Method to assign in-band ips to switches.
@@ -629,30 +705,35 @@ def assign_inband_ip(module):
 
 def main():
     """ This section is for arguments parsing """
-    module = AnsibleModule(argument_spec=dict(
-        pn_cliusername=dict(required=False, type='str'),
-        pn_clipassword=dict(required=False, type='str', no_log=True),
-        pn_fabric_name=dict(required=True, type='str'),
-        pn_fabric_network=dict(required=False, type='str',
-                               choices=['mgmt', 'in-band'], default='mgmt'),
-        pn_fabric_control_network=dict(required=False, type='str',
-                                       choices=['mgmt', 'in-band'],
-                                       default='mgmt'),
-        pn_toggle_port_speed=dict(required=False, type='bool', default=True),
-        pn_spine_list=dict(required=False, type='list', default=[]),
-        pn_leaf_list=dict(required=False, type='list', default=[]),
-        pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
-        pn_current_switch=dict(required=False, type='str'),
-        pn_static_setup=dict(required=False, type='bool', default=False),
-        pn_mgmt_ip=dict(required=False, type='str'),
-        pn_mgmt_ip_subnet=dict(required=False, type='str'),
-        pn_gateway_ip=dict(required=False, type='str'),
-        pn_dns_ip=dict(required=False, type='str'),
-        pn_dns_secondary_ip=dict(required=False, type='str'),
-        pn_domain_name=dict(required=False, type='str'),
-        pn_ntp_server=dict(required=False, type='str'),
-        pn_web_api=dict(type='bool', default=True),
-        pn_stp=dict(required=False, type='bool', default=True), )
+    module = AnsibleModule(
+        argument_spec=dict(
+            pn_cliusername=dict(required=False, type='str', no_log=True),
+            pn_clipassword=dict(required=False, type='str', no_log=True),
+            pn_fabric_name=dict(required=True, type='str'),
+            pn_fabric_network=dict(required=False, type='str',
+                                   choices=['mgmt', 'in-band'], default='mgmt'),
+            pn_fabric_control_network=dict(required=False, type='str',
+                                           choices=['mgmt', 'in-band'],
+                                           default='mgmt'),
+            pn_toggle_port_speed=dict(required=False, type='bool', default=True),
+            pn_spine_list=dict(required=False, type='list', default=[]),
+            pn_leaf_list=dict(required=False, type='list', default=[]),
+            pn_inband_ip=dict(required=False, type='str', default='192.16.0.0/24'),
+            pn_current_switch=dict(required=False, type='str'),
+            pn_static_setup=dict(required=False, type='bool', default=False),
+            pn_mgmt_ip=dict(required=False, type='str'),
+            pn_mgmt_ip_subnet=dict(required=False, type='str'),
+            pn_gateway_ip=dict(required=False, type='str'),
+            pn_dns_ip=dict(required=False, type='str'),
+            pn_dns_secondary_ip=dict(required=False, type='str'),
+            pn_domain_name=dict(required=False, type='str'),
+            pn_ntp_server=dict(required=False, type='str'),
+            pn_web_api=dict(type='bool', default=True),
+            pn_stp=dict(required=False, type='bool', default=True),
+            pn_autotrunk=dict(required=False, type='str',
+                              choices=['enable', 'disable']),
+            pn_autoneg=dict(required=False, type='bool')
+        )
     )
 
     fabric_name = module.params['pn_fabric_name']
@@ -660,6 +741,8 @@ def main():
     control_network = module.params['pn_fabric_control_network']
     toggle_flag = module.params['pn_toggle_port_speed']
     current_switch = module.params['pn_current_switch']
+    autotrunk = module.params['pn_autotrunk']
+    autoneg = module.params['pn_autoneg']
     results = []
     global CHANGED_FLAG
 
@@ -673,7 +756,7 @@ def main():
 
     # Create/join fabric
     if 'created' in create_or_join_fabric(module, fabric_name,
-                                                            fabric_network):
+                                          fabric_network):
         CHANGED_FLAG.append(True)
         results.append({
             'switch': current_switch,
@@ -686,16 +769,32 @@ def main():
             'output': u"Joined fabric '{}'".format(fabric_name)
         })
 
+    # Modify auto-neg for T2+ platforms
+    if autoneg is True and current_switch in module.params['pn_spine_list']:
+        out = modify_auto_neg(module)
+        CHANGED_FLAG.append(True)
+        results.append({
+            'switch': current_switch,
+            'output': out
+        })
+
     # Configure fabric control network to either mgmt or in-band
     if 'Success' in configure_control_network(module, control_network):
         CHANGED_FLAG.append(True)
+        results.append({
+            'switch': current_switch,
+            'output': u"Configured fabric control network to '{}'".format(
+                control_network)
+        })
 
-    results.append({
-        'switch': current_switch,
-        'output': u"Configured fabric control network to '{}'".format(
-            control_network
-        )
-    })
+    # Enable/disable auto-trunk
+    if autotrunk:
+        modify_auto_trunk(module, autotrunk)
+        CHANGED_FLAG.append(True)
+        results.append({
+            'switch': current_switch,
+            'output': u"Auto-trunk {}d".format(autotrunk)
+        })
 
     # Enable web api if flag is True
     if module.params['pn_web_api']:
@@ -705,56 +804,46 @@ def main():
     if 'Success' in modify_stp_local(module, 'enable'):
         CHANGED_FLAG.append(True)
 
-    results.append({
-        'switch': current_switch,
-        'output': 'STP enabled'
-    })
     # Enable jumbo flag
     if 'Success' in ports_modify_jumbo(module, 'jumbo'):
         CHANGED_FLAG.append(True)
-
         results.append({
-        'switch': current_switch,
-        'output': 'Jumbo enabled in ports'
-    })
+            'switch': current_switch,
+            'output': 'Jumbo enabled in ports'
+        })
 
     # Enable ports
     if enable_ports(module):
         CHANGED_FLAG.append(True)
-
-    results.append({
-        'switch': current_switch,
-        'output': 'Ports enabled'
-    })
+        results.append({
+            'switch': current_switch,
+            'output': 'Ports enabled'
+        })
 
     # Toggle 40g/100g ports to 10g/25g
     if toggle_flag:
         if toggle_local(module):
             CHANGED_FLAG.append(True)
-
-        json_msg = {
-            'switch': current_switch,
-            'output': 'Toggled 40G/100g ports to 10G/25g '
-        }
-        results.append(json_msg)
+            results.append({
+                'switch': current_switch,
+                'output': 'Toggled 40G/100g ports to 10G/25g '
+            })
 
     # Assign in-band ips.
     out = assign_inband_ip(module)
-    json_msg = {
+    results.append({
         'switch': current_switch,
         'output': out
-    }
-    results.append(json_msg)
+    })
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
         if 'Success' in modify_stp_local(module, 'enable'):
             CHANGED_FLAG.append(True)
-
-        results.append({
-            'switch': current_switch,
-            'output': 'STP enabled'
-        })
+            results.append({
+                'switch': current_switch,
+                'output': 'STP enabled'
+            })
 
     # Exit the module and return the required JSON
     module.exit_json(
