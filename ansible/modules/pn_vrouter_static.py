@@ -251,7 +251,7 @@ def main():
 
     if action == 'add':
         if VROUTER_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='vRouter %s does not exist' % vrouter
             )
 
@@ -263,7 +263,7 @@ def main():
 
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='vRouter %s does not exist' % vrouter
             )
 

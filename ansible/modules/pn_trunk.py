@@ -381,30 +381,30 @@ def main():
 
     if action == 'delete':
         if TRUNK_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='Trunk with name %s does not exist' % name
             )
         if trunk_id:
             if TRUNK_ID_EXISTS is False:
-                module.skip_json(
+                module.fail_json(
                     msg='Trunk with id %s does not exist' % trunk_id
                 )
             cli += ' trunk-id ' + trunk_id
     else:
         if action == 'create':
             if TRUNK_EXISTS is True:
-                module.skip_json(
+                module.fail_json(
                     msg='Trunk with name %s already exists' % name
                 )
 
         if action == 'modify':
             if TRUNK_EXISTS is False:
-                module.skip_json(
+                module.fail_json(
                     msg='Trunk with name %s does not exist' % name
                 )
             if trunk_id:
                 if TRUNK_ID_EXISTS is False:
-                    module.skip_json(
+                    module.fail_json(
                         msg='Trunk with id %s does not exist' % trunk_id
                     )
                 cli += ' trunk-id ' + trunk_id

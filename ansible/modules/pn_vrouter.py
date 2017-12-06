@@ -600,7 +600,7 @@ def main():
     if action == 'delete':
         check_cli(module)
         if VROUTER_NAME_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='vRouter with name %s does not exist' % name
             )
         cli += ' %s name %s ' % (command, name)
@@ -609,19 +609,19 @@ def main():
         check_cli(module)
         if action == 'modify':
             if VROUTER_NAME_EXISTS is False:
-                module.skip_json(
+                module.fail_json(
                     msg='vRouter with name %s does not exist' % name
                 )
             cli += ' %s name %s ' % (command, name)
 
         if action == 'create':
             if VROUTER_EXISTS is True:
-                module.skip_json(
+                module.fail_json(
                     msg='Maximum number of vRouters has been reached on this '
                         'switch'
                 )
             if VROUTER_NAME_EXISTS is True:
-                module.skip_json(
+                module.fail_json(
                     msg='vRouter with name %s already exists' % name
                 )
             cli += ' %s name %s vnet %s router-type %s ' \

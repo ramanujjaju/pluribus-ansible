@@ -241,11 +241,11 @@ def main():
 
     if action == 'add':
         if VROUTER_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='vRouter %s does not exist' % vrouter
             )
         if NETWORK_EXISTS is True:
-            module.skip_json(
+            module.exit_json(
                 msg='OSPF with network ip %s already exists on %s'
                     % (network, vrouter)
             )
@@ -259,11 +259,11 @@ def main():
 
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='vRouter %s does not exist' % vrouter
             )
         if NETWORK_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='OSPF with network ip %s already exists on %s'
                     % (network, vrouter)
             )

@@ -731,8 +731,8 @@ def main():
             pn_web_api=dict(type='bool', default=True),
             pn_stp=dict(required=False, type='bool', default=True),
             pn_autotrunk=dict(required=False, type='str',
-                              choices=['enable', 'disable'], default='disable'),
-            pn_autoneg=dict(required=False, type='bool', default=False)
+                              choices=['enable', 'disable']),
+            pn_autoneg=dict(required=False, type='bool')
         )
     )
 

@@ -267,14 +267,14 @@ def main():
 
     if action == 'delete':
         if VLAG_EXISTS is False:
-            module.skip_json(
+            module.fail_json(
                 msg='VLAG with name %s does not exist' % name
             )
 
     else:
         if action == 'create':
             if VLAG_EXISTS is True:
-                module.skip_json(
+                module.fail_json(
                     msg='VLAG with name %s already exists' % name
                 )
 
@@ -287,7 +287,7 @@ def main():
 
         if action == 'modify':
             if VLAG_EXISTS is False:
-                module.skip_json(
+                module.fail_json(
                     msg='VLAG with name %s does not exist' % name
                 )
 
