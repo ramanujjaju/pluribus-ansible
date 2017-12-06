@@ -207,6 +207,9 @@ def get_existing_vlans(module):
     :return: list of existing vlans.
     """
     cli = pn_cli(module)
+    cliswitch = module.params['pn_cliswitch']
+    if cliswitch is None:
+        cli += ' switch-local '
     cli += ' vlan-show format id, no-show-headers'
     existing_vlans = run_cli(module, cli).splitlines()
     vlan_list = []
@@ -356,14 +359,14 @@ def main():
     message = ''
     global CHANGED_FLAG
 
-    if cliswitch == 'local':
+    if cliswitch is None:
         cliswitch = get_switch_name(module)
 
     for vlan in vlan_list:
         if vlan not in range(MIN_VLAN_ID, MAX_VLAN_ID+1):
             message += 'Invalid VLAN ID %s. VLAN ID must be ' \
                        'between 2 and 4092\n' % vlan
-            module.fail_json(
+            module.skip_json(
                 stderr=message,
                 msg="VLAN configuration failed"
             )

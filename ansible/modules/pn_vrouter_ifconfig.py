@@ -367,32 +367,32 @@ def main():
     cli += ' %s vrouter-name %s nic %s ' % (command, vrouter, nic)
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.skip_json(
                 msg='vRouter %s does not exist' % vrouter
             )
         if NIC_EXISTS is False:
-            module.fail_json(
+            module.skip_json(
                 msg='vRouter interface with nic %s does not exist' % nic
             )
 
     else:
         if action == 'add':
             if VROUTER_EXISTS is False:
-                module.fail_json(
+                module.skip_json(
                     msg='vRouter %s does not exist' % vrouter
                 )
             if NIC_EXISTS is True:
-                module.fail_json(
+                module.skip_json(
                     msg='vRouter interface with nic %s already exists' % nic
                 )
 
         if action == 'modify':
             if VROUTER_EXISTS is False:
-                module.fail_json(
+                module.skip_json(
                     msg='vRouter %s does not exist' % vrouter
                 )
             if NIC_EXISTS is False:
-                module.fail_json(
+                module.skip_json(
                     msg='vRouter interface with nic %s does not exist' % nic
                 )
 
