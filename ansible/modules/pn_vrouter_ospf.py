@@ -170,7 +170,6 @@ def check_cli(module):
     check_network += 'format network no-show-headers'
     check_network = shlex.split(check_network)
     out = module.run_command(check_network)[1]
-    out = out.split()
 
     NETWORK_EXISTS = True if network in out else False
 
@@ -241,11 +240,13 @@ def main():
 
     if action == 'add':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter %s does not exist' % vrouter
             )
         if NETWORK_EXISTS is True:
             module.exit_json(
+                skipped=True,
                 msg='OSPF with network ip %s already exists on %s'
                     % (network, vrouter)
             )
@@ -259,12 +260,14 @@ def main():
 
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter %s does not exist' % vrouter
             )
         if NETWORK_EXISTS is False:
-            module.fail_json(
-                msg='OSPF with network ip %s already exists on %s'
+            module.exit_json(
+                skipped=True,
+                msg='OSPF with network ip %s does not exist on %s'
                     % (network, vrouter)
             )
         cli += ' %s vrouter-name %s network %s ' % (command, vrouter, network)

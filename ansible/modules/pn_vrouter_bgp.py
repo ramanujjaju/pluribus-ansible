@@ -253,7 +253,7 @@ def check_cli(module):
     out = module.run_command(check_vrouter)[1]
     out = out.split()
 
-    VROUTER_EXISTS = True if vrouter_name in out else False
+    VROUTER_EXISTS = True if vrouter in out else False
 
     # Check for BGP neighbors
     check_neighbor = show_cli + ' vrouter-bgp-show vrouter-name %s ' % vrouter
@@ -325,7 +325,7 @@ def main():
             pn_max_prefix=dict(type='str'),
             pn_max_prefix_warn=dict(type='bool'),
             pn_bfd=dict(type='bool'),
-            pn_bfd_multihop=dict(type='bool')
+            pn_bfd_multihop=dict(type='bool'),
             pn_multiprotocol=dict(type='str',
                                   choices=['ipv4-unicast', 'ipv6-unicast']),
             pn_weight=dict(type='str'),
@@ -335,7 +335,7 @@ def main():
             pn_send_community=dict(type='bool'),
             pn_route_map_in=dict(type='str'),
             pn_route_map_out=dict(type='str'),
-            pn_allowas=dict(type='bool'),
+            pn_allowas_in=dict(type='bool'),
             pn_interface=dict(type='str')
         )
     )
@@ -349,8 +349,8 @@ def main():
     next_hop_self = module.params['pn_next_hop_self']
     password = module.params['pn_password']
     ebgp_multihop = module.params['pn_ebgp_multihop']
-    prefix_listin = module.params['pn_prefix_list_in']
-    prefix_listout = module.params['pn_prefix_list_out']
+    prefix_list_in = module.params['pn_prefix_list_in']
+    prefix_list_out = module.params['pn_prefix_list_out']
     route_reflector = module.params['pn_route_reflector']
     override_capability = module.params['pn_override_capability']
     soft_reconfig = module.params['pn_soft_reconfig']
@@ -363,11 +363,12 @@ def main():
     default_originate = module.params['pn_default_originate']
     keepalive_interval = module.params['pn_keepalive_interval']
     holdtime = module.params['pn_holdtime']
-    send_community = module.params['send_community']
+    send_community = module.params['pn_send_community']
     route_map_in = module.params['pn_route_map_in']
     route_map_out = module.params['pn_route_map_out']
     allowas_in = module.params['pn_allowas_in']
     interface = module.params['pn_interface']
+    update_src = module.params['pn_update_src']
 
     # Building the CLI command string
     cli = pn_cli(module)
@@ -375,11 +376,13 @@ def main():
 
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter %s does not exist' % vrouter
             )
         if NEIGHBOR_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='BGP neighbor with IP %s does not exist on %s'
                     % (neighbor, vrouter)
             )
@@ -390,22 +393,26 @@ def main():
 
         if action == 'add':
             if VROUTER_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vRouter %s does not exist' % vrouter
                 )
             if NEIGHBOR_EXISTS is True:
                 module.exit_json(
-                    msg='BGP neighbor with IP %s already exists on %s'
-                        % (neighbor, vrouter)
+                      skipped=True,
+                      msg='BGP neighbor with IP %s already exists on %s'
+                          % (neighbor, vrouter)
                 )
 
         if action == 'modify':
             if VROUTER_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vRouter %s does not exists' % vrouter
                 )
             if NEIGHBOR_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                   skipped=True,
                    msg='BGP neighbor with IP %s does not exist on %s'
                        % (neighbor, vrouter)
                 )

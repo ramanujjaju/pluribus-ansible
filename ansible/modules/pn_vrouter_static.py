@@ -120,7 +120,7 @@ changed:
 
 
 VROUTER_EXISTS = None
-
+ROUTE_EXISTS = None
 
 def pn_cli(module):
     """
@@ -157,9 +157,10 @@ def check_cli(module):
     """
     vrouter = module.params['pn_vrouter']
     network = module.params['pn_network']
+    gateway = module.params['pn_gateway']
     show_cli = pn_cli(module)
     # Global flags
-    global VROUTER_EXISTS, NETWORK_EXISTS
+    global VROUTER_EXISTS, ROUTE_EXISTS
 
     cliswitch = module.params['pn_cliswitch']
     if cliswitch:
@@ -173,6 +174,17 @@ def check_cli(module):
     out = out.split()
 
     VROUTER_EXISTS = True if vrouter in out else False
+    
+    # Check for static route
+    check_route = show_cli + ' vrouter-static-route-show vrouter-name %s ' % vrouter
+    check_route += ' format network,gateway-ip no-show-headers'
+    check_route = shlex.split(check_route)
+    out = module.run_command(check_route)[1]
+
+    if network in out and gateway in out:
+        ROUTE_EXISTS = True
+    else:
+        ROUTE_EXISTS = False
 
 
 def run_cli(module, cli):
@@ -251,8 +263,15 @@ def main():
 
     if action == 'add':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter %s does not exist' % vrouter
+            )
+        if ROUTE_EXISTS is True:
+            module.exit_json(
+                skipped=True,
+                msg='Route with network %s and gateway %s already exists'
+                    % (network, gateway)
             )
 
         if bfd_dst:
@@ -263,8 +282,15 @@ def main():
 
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter %s does not exist' % vrouter
+            )
+        if ROUTE_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='Route with network %s and gateway %s does not exist'
+                    % (network, gateway)
             )
 
     run_cli(module, cli)

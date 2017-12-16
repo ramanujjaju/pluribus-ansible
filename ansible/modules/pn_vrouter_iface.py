@@ -426,11 +426,13 @@ def main():
 
     if action == 'remove':
         if VROUTER_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter %s does not exist' % vrouter
             )
         if NIC_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vRouter interface with nic %s does not exist' % nic
             )
         cli += ' %s vrouter-name %s nic %s ' % (command, vrouter, nic)
@@ -438,14 +440,16 @@ def main():
     else:
         if action == 'add':
             if VROUTER_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vRouter %s does not exist' % vrouter
                 )
 
             if vrrp_id:
                 vrrp_primary = get_nic(module)
                 if VRRP_EXISTS is True:
-                    module.fail_json(
+                    module.exit_json(
+                        skipped=True,
                         msg=('VRRP interface on %s already exists. Check '
                              'the IP addresses' % vrouter)
                     )
@@ -459,7 +463,8 @@ def main():
 
             else:
                 if INTERFACE_EXISTS is True:
-                    module.fail_json(
+                    module.exit_json(
+                        skipped=True,
                         msg=('vRouter interface on %s already exists. '
                              'Check the IP address(es)' % vrouter)
                     )
@@ -468,11 +473,13 @@ def main():
 
         if action == 'modify':
             if VROUTER_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vRouter %s does not exist' % vrouter
                 )
             if NIC_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vRouter interface with nic %s does not exist' % nic
                 )
             cli += ' %s vrouter-name %s nic %s ' % (command, vrouter, nic)

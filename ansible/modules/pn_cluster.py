@@ -237,21 +237,25 @@ def main():
 
     if action == 'delete':
         if NAME_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='Cluster with name %s does not exist' % name
             )
     else:
         if action == 'create':
             if NAME_EXISTS is True:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='Cluster with name %s already exists' % name
                 )
             if NODE1_EXISTS is True:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='Node %s already part of a cluster' % cluster_node1
                 )
             if NODE2_EXISTS is True:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='Node %s already part of a cluster' % cluster_node2
                 )
 
@@ -265,7 +269,8 @@ def main():
 
         if action == 'modify':
             if NAME_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='Cluster with name %s does not exist' % name
                 )
 

@@ -575,7 +575,7 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str', no_log=True),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str', default='local'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
             pn_name=dict(required=True, type='str'),
@@ -758,7 +758,8 @@ def main():
     if action == 'delete':
         check_cli(module)
         if VFLOW_EXISTS is False:
-            module.fail_json(
+            module.exit_json(
+                skipped=True,
                 msg='vFlow %s does not exist' % name
             )
         cli += ' %s name %s ' % (command, name)
@@ -769,7 +770,8 @@ def main():
         check_cli(module)
         if action == 'modify':
             if VFLOW_EXISTS is False:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vFlow %s does not exist' % name
                 )
             cli += ' %s name %s ' % (command, name)
@@ -778,7 +780,8 @@ def main():
 
         if action == 'create':
             if VFLOW_EXISTS is True:
-                module.fail_json(
+                module.exit_json(
+                    skipped=True,
                     msg='vFlow %s already exists ' % name
                 )
             cli += ' %s name %s scope %s ' % (command, name, scope)
