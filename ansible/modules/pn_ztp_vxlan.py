@@ -220,7 +220,8 @@ def tunnel_create_for_cluster_nodes(module, switch, peer_switch,
         cli += ' switch %s tunnel-create name %s ' % (sw_name, tunnel_name)
         cli += ' scope cluster local-ip %s ' % local_ip
         cli += ' remote-ip %s vrouter-name ' % remote_ip
-        cli += ' %s peer-vrouter-name %s ' % (switch, peer_switch)
+        cli += ' %s peer-vrouter-name ' % switch
+        cli += ' %s ' % (peer_switch[sw_name]+'-vrouter')
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
         output += '%s: Tunnel creation successful for switch \n ' % sw_name
@@ -228,7 +229,8 @@ def tunnel_create_for_cluster_nodes(module, switch, peer_switch,
     return output
 
 
-def tunnel_create_for_nc_nodes(module, switch, local_ip, remote_ip, tunnel_name):
+def tunnel_create_for_nc_nodes(module, switch, local_ip, remote_ip,
+                                                         tunnel_name):
     """
     Method to find ip of cluster node.
     :param module: The Ansible module to fetch input parameters.
@@ -254,7 +256,8 @@ def tunnel_create_for_nc_nodes(module, switch, local_ip, remote_ip, tunnel_name)
         cli += ' %s' % switch
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        output += '%s: Tunnel %s creation successful \n' % (sw_name, tunnel_name)
+        output += '%s: Tunnel %s creation ' % (sw_name, tunnel_name)
+        output += 'successful \n'
 
     return output
 
@@ -279,28 +282,32 @@ def add_vxlan_loopback_trunk_ports(module, ports, switch):
     return output
 
 
-def add_vxlan_to_tunnel(module, sw_name, vxlan, tunnel_name):
+def add_vxlan_to_tunnel(module, sw_name, vxlan_list, tunnel_name):
     """
     Method to add vxlan to tunnel.
     :param module: The Ansible module to fetch input parameters.
     :param sw_name: The switch name.
-    :param vxlan: vxlan input string.
+    :param vxlan_list: vxlan input list.
     :param tunnel_name: String describing name of the tunnel.
     :return: String describing if port is modified or not.
     """
     output = ''
     cli = pn_cli(module)
+    clicopy = cli
 
-    cli += ' switch %s tunnel-vxlan-add ' % sw_name
-    cli += ' name  %s '% tunnel_name
-    cli += ' vxlan %s ' % vxlan
-    if 'Success' in run_cli(module, cli):
-        output += '%s: Added VXLAN-ID %s to tunnel %s \n ' % (sw_name, vxlan, tunnel_name)
+    for vxlan in vxlan_list:
+        cli = clicopy
+        cli += ' switch %s tunnel-vxlan-add ' % sw_name
+        cli += ' name  %s '% tunnel_name
+        cli += ' vxlan %s ' % vxlan
+        if 'Success' in run_cli(module, cli):
+            output += '%s: Added VXLAN-ID %s ' % (sw_name, vxlan)
+            output += 'to tunnel %s \n ' % tunnel_name
 
     return output
 
 
-def create_tunnel(module, full_nodes):
+def create_tunnel(module, full_nodes, cluster_pair):
     """
     Method to create tunnel.
     :param module: The Ansible module to fetch input parameters.
@@ -310,7 +317,7 @@ def create_tunnel(module, full_nodes):
     output = ''
     endpoint1 = module.params['pn_tunnel_endpoint1']
     endpoint2 = module.params['pn_tunnel_endpoint2']
-    vxlan_id = module.params['pn_tunnel_vxlan_id']
+    vxlan_id = module.params['pn_tunnel_vxlan_id'].split(',')
     if endpoint1 and endpoint2:
         all_nodes = {}
         for node in full_nodes:
@@ -320,32 +327,39 @@ def create_tunnel(module, full_nodes):
         all_nodes = full_nodes
 
     for node in all_nodes:
+        endpoint1 = node[:-8]
         local_ip = all_nodes[node][0]
-        state = all_nodes[node][1]
+        is_endpoint1_cluster = all_nodes[node][1]
         for node1 in all_nodes:
+            endpoint2 = node1[:-8]
             remote_ip = all_nodes[node1][0]
-            state1 = all_nodes[node1][1]
-            if local_ip == remote_ip:
+            is_endpoint2_cluster = all_nodes[node1][1]
+            # Ignoring ipv6
+            if '.' not in local_ip or '.' not in remote_ip:
                 continue
             else:
-                if state is True and state1 is False:
-                    tunnel_name = node+'-pair-'+node1
-                    output += tunnel_create_for_cluster_nodes(module, node, node1,
-                                                              local_ip, remote_ip, tunnel_name)
-                elif state is False and state1 is False:
-                    tunnel_name = node+'-'+node1
-                    output += tunnel_create_for_nc_nodes(module, node, local_ip,
-                                                         remote_ip, tunnel_name)
-                elif state is False and state1 is True:
-                    tunnel_name = node+'-to-'+node1+'-pair'
-                    output += tunnel_create_for_nc_nodes(module, node,
-                                                         local_ip, remote_ip, tunnel_name)
-                elif state is True and state1 is True:
-                    tunnel_name = node+'-pair-to-'+node1+'-pair'
-                    output += tunnel_create_for_cluster_nodes(module, node, node1,
-                                                              local_ip, remote_ip, tunnel_name)
+                # Ignoring same ip configuration
+                if  local_ip == remote_ip:
+                    pass
+                else:
+                    if is_endpoint1_cluster is True and is_endpoint2_cluster is False:
+                        tunnel_name = endpoint1+'-pair-'+endpoint2
+                        output += tunnel_create_for_cluster_nodes(module, node, cluster_pair,
+                                                                  local_ip, remote_ip, tunnel_name)
+                    elif is_endpoint1_cluster is False and is_endpoint2_cluster is False:
+                        tunnel_name = endpoint1+'-'+endpoint2
+                        output += tunnel_create_for_nc_nodes(module, node, local_ip,
+                                                             remote_ip, tunnel_name)
+                    elif is_endpoint1_cluster is False and is_endpoint2_cluster is True:
+                        tunnel_name = endpoint1+'-to-'+endpoint2+'-pair'
+                        output += tunnel_create_for_nc_nodes(module, node,
+                                                             local_ip, remote_ip, tunnel_name)
+                    elif is_endpoint1_cluster is True and is_endpoint2_cluster is True:
+                        tunnel_name = endpoint1+'-pair-to-'+endpoint2+'-pair'
+                        output += tunnel_create_for_cluster_nodes(module, node, cluster_pair,
+                                                                  local_ip, remote_ip, tunnel_name)
 
-                output += add_vxlan_to_tunnel(module, node[:-8], vxlan_id, tunnel_name)
+                    output += add_vxlan_to_tunnel(module, node[:-8], vxlan_id, tunnel_name)
     return all_nodes, output
 
 
@@ -357,18 +371,32 @@ def find_nodes(module, vlan_id):
     :return: dictionary describing information.
     """
     cli = pn_cli(module)
+    clicopy = cli
+    all_nodes = {}
+    cluster_pair = {}
 
+    cli += 'cluster-show format cluster-node-1,cluster-node-2, parsable-delim ,'
+    cluster_nodes = run_cli(module, cli).strip().split('\n')
+    for cluster in cluster_nodes:
+        cluster = cluster.split(',')
+        cluster_node1, cluster_node2 = cluster[0], cluster[1]
+        cluster_pair[cluster_node2] = cluster_node1
+        cluster_pair[cluster_node1] = cluster_node2
+
+    cli = clicopy
     cli += 'vrouter-interface-show vlan %s format ' % vlan_id
     cli += 'ip,is-vip,is-primary,vlan parsable-delim ,'
     nodes = run_cli(module, cli).strip().split('\n')
-    all_nodes = {}
     for node in nodes:
         node = node.split(',')
-        vr_name, vip, is_vip, is_primary, vlan = node[0], node[1], node[2], node[3], node[4]
-        if not is_vip and not is_primary:
-            all_nodes[vr_name] = vip, False
-        else:
-            all_nodes[vr_name] = vip, True
+        vr_name, ip, is_vip, is_primary, vlan = node[0], node[1], node[2], node[3], node[4]
+        if '.' in ip:
+            if is_primary:
+                pass
+            elif  is_vip:
+                all_nodes[vr_name] = ip, True
+            else:
+                all_nodes[vr_name] = ip, False
 
     duplicate_set = set()
     for key in all_nodes.keys():
@@ -377,7 +405,8 @@ def find_nodes(module, vlan_id):
             del all_nodes[key]
         else:
             duplicate_set.add(value)
-    return all_nodes
+
+    return all_nodes, cluster_pair
 
 
 def main():
@@ -404,8 +433,8 @@ def main():
 
     output = ''
 
-    all_nodes = find_nodes(module, vlan_id)
-    all_nodes, output = create_tunnel(module, all_nodes)
+    all_nodes, cluster_pair = find_nodes(module, vlan_id)
+    all_nodes, output = create_tunnel(module, all_nodes, cluster_pair)
     output1 += output
 
     for switch in all_nodes:
