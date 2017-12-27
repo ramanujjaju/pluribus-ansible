@@ -191,7 +191,12 @@ def create_vrouter(module, switch):
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
         cli += ' router-type hardware proto-multi %s ' % pim_ssm
-        cli += ' ospf-redistribute %s ' % pn_ospf_redistribute
+        if pn_ospf_redistribute:
+            cli += ' ospf-redistribute %s ' % pn_ospf_redistribute
+        if module.params['pn_bgp_as']:
+            cli += ' bgp-as %s' % module.params['pn_bgp_as']
+        if module.params['pn_bgp_redistribute']:
+            cli += ' bgp-redistribute %s' % module.params['pn_bgp_redistribute']
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
@@ -218,11 +223,12 @@ def assign_loopback_and_router_id(module, loopback_address, current_switch):
     vrouter_count = int(address[3].split('/')[0])
     add_loopback = False
     vrouter = current_switch + '-vrouter'
+    cli = pn_cli(module)
 
     if current_switch in spine_list:
         count = spine_list.index(current_switch)
     elif current_switch in leaf_list:
-        count = leaf_list.index(current_switch) + len(spine_list)
+        count = leaf_list.index(current_switch)
 
     if module.params['pn_loopback_ip_v6']:
         add_loopback_v6 = False
@@ -287,6 +293,30 @@ def assign_loopback_and_router_id(module, loopback_address, current_switch):
         CHANGED_FLAG.append(True)
         output += '%s: Added loopback ip %s to %s\n' % (current_switch, ip, vrouter)
 
+
+    return output
+
+
+def pim_modify(module):
+    """
+    Modify pim-config in vrouter.
+    :param module: The Ansible module to fetch input parameters.
+    :return: String describing if vrouter got created or not.
+    """
+    global CHANGED_FLAG
+    output = ''
+
+    cli = pn_cli(module)
+    cli += 'vrouter-show format name no-show-headers '
+    vrouter_list = run_cli(module, cli).strip().split()
+    for vrouter in vrouter_list:
+        cli = pn_cli(module)
+        cli += ' vrouter-pim-config-modify vrouter-name %s' % vrouter
+        cli += ' query-interval 10 querier-timeout 30'
+        run_cli(module, cli)
+        output += '%s: Successfully modified pim-config' % vrouter
+        CHANGED_FLAG.append(True)
+
     return output
 
 
@@ -306,6 +336,10 @@ def main():
                                       choices=['none', 'static', 'connected',
                                                'rip', 'ospf'],
                                       default='none'),
+            pn_bgp_redistribute=dict(required=False, type='str',
+                                      choices=['none', 'static', 'connected',
+                                               'rip', 'ospf']),
+            pn_bgp_as=dict(required=False, type='str'),
             pn_loopback_ip_v6=dict(required=False, type='str'),
         )
     )
@@ -321,6 +355,7 @@ def main():
 
     # Assign loopback ip to vrouters
     message += assign_loopback_and_router_id(module, loopback_address, current_switch)
+    message += pim_modify(module)
 
     replace_string = current_switch + ': '
     for line in message.splitlines():

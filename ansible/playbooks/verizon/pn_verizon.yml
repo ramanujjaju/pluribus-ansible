@@ -1,0 +1,466 @@
+#Verizon
+---
+
+
+# This task is to accept eula.
+# It uses pn_eula_accept.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Zero Touch Provisioning - Eula accept
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto accept EULA
+      pn_ztp_eula_accept:
+        pn_cliusername: "{{ ansible_user }}"                                                                              # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"                                                                              # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] | default([]) }}"                                                          # List of spine switches
+        pn_leaf_list: "{{ groups['leaf'] | default([])}}"                                                             # List of leaf switches
+        pn_leaf_ips: "{{ groups['leaf'] | default('') | map('extract', hostvars, ['ansible_host']) | join(',') }}"    # IPs of leaf switches separated by comma
+        pn_spine_ips: "{{ groups['spine'] | default('') | map('extract', hostvars, ['ansible_host']) | join(',') }}"  # IPs of spine switches separated by comma
+
+      tags: EULA
+
+
+## NOTE : ansible_ssh_pass should be provided in cli_vault.yml according to your requirement defatult will be ansible_ssh_pass: test123.
+
+# This task is to configure initial ZTP setup on all switches.
+# It uses pn_initial_ztp.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# If the tasks fails then it will retry as specified by retries count.
+- name: Zero Touch Provisioning - Initial setup
+  hosts: all
+  serial: 1
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
+      pn_ztp_initial_setup:
+        pn_cliusername: "{{ ansible_user }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"               # Cli password (value comes from cli_vault.yml).
+        pn_fabric_name: "Vz_HMPLAB_FABRIC1"      # Name of the fabric to create/join.
+        pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
+        pn_inband_ipv4: '104.255.62.40/27'               # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
+        pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
+        pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
+        pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
+        pn_static_setup: False                         # Flag to indicate if static values should be assign to following switch setup params. Default: True.
+        pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
+        pn_mgmt_ip_subnet: '16'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: '104.254.1.1'                      # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+        pn_dns_ip: '104.255.40.101'                        # Specify DNS-IP value to be assign if pn_static_setup is True.
+        pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
+        pn_domain_name: 'HEMPLAB.VERIZON.COM'         # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+        pn_ntp_server: '0.us.pool.ntp.org'             # Specify NTP-SERVER value to be assign if pn_static_setup is True.
+        pn_web_api: True                               # Flag to enable web api. Default: True
+        pn_stp: False                                  # Specify True if you want to enable STP at the end. Default: False.
+      register: ztp_out                                # Variable to hold/register output of the above tasks.
+      until: ztp_out.failed != true                    # If the above code fails it will retry the code
+      retries: 3                                       # This is the retries count
+      delay: 3
+      ignore_errors: yes                               # Flag to indicate if we should ignore errors if any.
+      tags: ZTP_INITIAL
+
+    - pause:
+        seconds: 2                                     # Pause playbook execution for specified amount of time.
+
+
+
+- name: Configure vrouter
+  hosts: spine
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Setup vrouter
+      pn_ztp_vrouter_setup:
+        pn_cliusername: "{{ ansible_user }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"               # Cli password (value comes from cli_vault.yml).
+        pn_loopback_ip: '104.255.61.1/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
+        pn_loopback_ip_v6: '2620:0000:167F:b000::10/128'          # Loopback network to confgure ipv6 loopback ips vrouters.
+        pn_vrrp_id: '15'                               # Vrrp-id for the vrouters
+        pn_current_switch: "{{ inventory_hostname }}"  # The name of the current executing switch
+        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
+        pn_ospf_redistribute: 'static'                   # Variable to configure ospf redistribute
+      tags: VROUTER_CREATE
+
+
+
+- name: Configure vrouter
+  hosts: leaf[0:3]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Setup vrouter
+      pn_ztp_vrouter_setup:
+        pn_cliusername: "{{ ansible_user }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"               # Cli password (value comes from cli_vault.yml).
+        pn_loopback_ip: '104.255.61.5/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
+        pn_loopback_ip_v6: '2620:0000:167F:b000::14/128'          # Loopback network to confgure ipv6 loopback ips vrouters.
+        pn_vrrp_id: '15'                               # Vrrp-id for the vrouters
+        pn_current_switch: "{{ inventory_hostname }}"  # The name of the current executing switch
+        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
+        pn_ospf_redistribute: 'static' 
+      tags: VROUTER_CREATE
+
+
+#- name: Configure vrouter
+#  hosts: leaf[4:5]
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: Setup vrouter
+#      pn_ztp_vrouter_setup:
+#        pn_cliusername: "{{ ansible_user }}"               # Cli username (value comes from cli_vault.yml).
+#        pn_clipassword: "{{ ansible_ssh_pass }}"               # Cli password (value comes from cli_vault.yml).
+#        pn_loopback_ip: '104.255.61.7/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
+#        pn_loopback_ip_v6: '2620:0000:167F:b000::18/128'          # Loopback network to confgure ipv6 loopback ips vrouters.
+#        pn_vrrp_id: '15'                               # Vrrp-id for the vrouters
+#        pn_current_switch: "{{ inventory_hostname }}"  # The name of the current executing switch
+#        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+#        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+#        pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
+#        pn_ospf_redistribute: 'static,bgp'
+#        pn_bgp_as: '65542'
+#        pn_bgp_redistribute: 'static,ospf'
+
+
+
+
+- name: Configure L3 VRRP and L3 links
+  hosts: leaf
+  tags: VRRP
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - csv_file: /etc/ansible/pluribus-ansible/ansible/vrrp_verizon.csv
+
+  tasks:
+    # This task is to configure VRRP for Layer 3 fabric.
+    # It takes required VRRP config data from csv file.
+    # It uses pn_l3_vrrp.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    - name: Configure L3 vrrp
+      pn_ztp_l3_vrrp:
+        pn_cliusername: "{{ ansible_user }}"        # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"        # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # Csv file containing L3 vrrp data.
+        pn_pim_ssm: True                        # Variable to specify pim_ssm for ospf
+        pn_jumbo_frames: True                   # Flag to assign mtu Default: False.
+        pn_addr_type: 'ipv4_ipv6'               # The type of address scheme to be used. Options: ipv4/dual_stack.
+        pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
+        pn_ospf_redistribute: 'none'            # Variable to configure ospf redistribute
+      register: vrrp_out                        # Variable to hold/register output of the above tasks.
+      until:  vrrp_out.failed != true           # If error pops up it will retry the code
+      retries: 3                                # This is the retries count
+      delay: 1
+
+    - pause:
+        seconds: 2                              # Pause playbook execution for specified amount of time.
+
+
+    # This task is to configure ZTP for layer3 fabric.
+    # It uses pn_l3_ztp.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    # If the tasks fails then it will retry as specified by retries count.
+    - name: Auto configure link IPs
+      pn_ztp_l3_links:
+        pn_cliusername: "{{ ansible_user }}"                # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"                # Cli password (value comes from cli_vault.yml).
+        pn_current_switch: "{{ inventory_hostname }}"   # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_addr_type: 'ipv4_ipv6'                       # The type of address scheme to be used. Options: ipv4/dual_stack.
+        pn_net_address_ipv4: "104.255.61.68"              # Ipv4 Network address required to calculate link IPs for layer3 fabric.
+        pn_cidr_ipv4: "24"                              # Ipv4 Subnet mask required to calculate link IPs for layer3 fabric.
+        pn_if_nat_realm: 'internal'                      # Type of if_nat_realm. choices=['internal', 'external'], default='internal' 
+        pn_supernet_ipv4: "31"                          # Ipv4 Supernet mask required to calculate link IPs for layer3 fabric.
+        pn_net_address_ipv6: '2620:0000:167F:b001::40' # Ipv6 Network address required to calculate link IPs for layer3 fabric.
+        pn_cidr_ipv6: "112"                              # ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
+        pn_supernet_ipv6: "126"                         # Ipv6 Supernet mask required to calculate link IPs for layer3 fabric.
+        pn_bfd: True                          		# Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
+        pn_bfd_min_rx: 200           			# BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
+        pn_bfd_multiplier: 3    			# BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.
+        pn_update_fabric_to_inband: False  		# Flag to indicate if fabric network should be updated to in-band. Default: False.
+        pn_stp: True                          		# Flag to enable STP (spanning tree protocol). Default: False.
+        pn_jumbo_frames: True                           # Flag to assign mtu Default: False. 
+      register: ztp_l3_out                              # Variable to hold/register output of the above tasks.
+      until:  ztp_l3_out.failed != true                 # If error pops up it will retry the code
+      retries: 3                                        # This is the retries count
+      delay: 1
+
+    - pause:
+        seconds: 2                                      # Pause playbook execution for specified amount of time.
+
+
+- name: Configure OSPF
+  hosts: all
+  tags: CONFIGURE_OSPF
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    # This task is to configure OSPF.
+    # It uses pn_ebgp_ospf.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    - name: Configure OSPF
+      pn_ztp_bgp_ospf:
+        pn_cliusername: "{{ ansible_user }}"                   # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"                   # Cli password (value comes from cli_vault.yml).
+        pn_current_switch: "{{ inventory_hostname }}"      # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] }}"             # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"               # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_bfd: True                             	   # Indicate if BFD config should be added to eBGP. Default: False.
+        pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
+        pn_ospf_area_id: "0"           			   # Area id to configure for ospf. Default: 0
+        pn_iospf_ip_range: "104.255.61.92/27"       	   # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
+        pn_super_net_ipv4: "31"
+        pn_iospf_vlan: "4040"                  		   # Vlan for creating the interfaces between leaf clusters. Default:'4040'
+        pn_addr_type: 'ipv4_ipv6'                          # The type of address scheme to be used. Options: ipv4/dual_stack.
+        pn_ospf_redistribute: "connected"                  # Variable to configure ospf redistribute 
+        pn_pim_ssm: True                       		   # pim-ssm variable for configuration
+        pn_area_configure_flag: "singlearea"               # Varible to configure area choices=['singlearea', 'dualarea'], default='singlearea'
+        pn_jumbo_frames: True                              # Flag to assign mtu Default: False.
+      register: ospf_out                                   # Variable to hold/register output of the above tasks.
+      until: ospf_out.failed != true                       # If the above code fails it will retry the code
+      retries: 3                                           # This is the retries count
+      delay: 1
+
+    - pause:
+        seconds: 2                                         # Pause playbook execution for specified amount of time.
+
+
+- name: vrouter interface  modules
+  hosts: spine[0]
+  tags: VROUTER_INT_CREATE
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Add a vrouter interface
+      pn_vrouter_iface:
+        pn_cliusername: "{{ ansible_user }}"                 #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"                    #Provide login password if user is not root.
+        pn_action: "add"                                #vRouter interface command - add/remove/modify.
+        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_vrouter: "hmplabpsq-we60100-vrouter"            #Name of the vrouter.
+        pn_vlan: "490"                                  #Interface vlan.
+        pn_interface_ip: "10.9.9.1/24"                     #IP address for the interface in x.x.x.x/n format.
+        pn_mtu: "9216"                                    #Interface MTU.
+      register: output
+    - debug:
+        var: output
+
+- name: vrouter interface  modules
+  hosts: spine[1]
+  tags: VROUTER_INT_CREATE
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Add a vrouter interface
+      pn_vrouter_iface:
+        pn_cliusername: "{{ ansible_user }}"          #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"          #Provide login password if user is not root.
+        pn_action: "add"                          #vRouter interface command - add/remove/modify.
+        pn_vrouter: "hmplabpsq-we60200-vrouter"   #Name of the vrouter.
+        pn_vlan: "490"                            #Interface vlan.
+        pn_interface_ip: "10.9.10.1/24"           #IP address for the interface in x.x.x.x/n format.
+        pn_mtu: "9216"                            #Interface MTU.
+      register: output
+    - debug:
+        var: output
+
+    # This task is to create VLAN.
+    # It uses pn_vlan.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    # If the tasks fails then it will retry as specified by retries count.
+- name: VLAN Configuration
+  tags: VLAN_CREATE
+  hosts: spine, leaf
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_cliusername: "{{ ansible_user }}"               #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"               #Provide login password if user is not root.
+        #pn_cliswitch: spine, leaf                 #Target switch to run the cli on.
+        pn_action: 'create'                              #The VLAN action to perform on the switches.
+        pn_vlanid: '610'                           #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'local'                             #Scope for VLAN - fabric/local/cluster.
+        pn_description: 'inbandMGMT'               #VLAN description.
+        pn_vxlan: 6100                                 #VXLAN tunnel mapped to VLAN.
+      register: output
+    - debug:
+        var: output
+
+
+- name: VLAN Configuration
+  tags: VLAN_CREATE
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_cliusername: "{{ ansible_user }}"               #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"               #Provide login password if user is not root.
+        #pn_cliswitch: spine, leaf                 #Target switch to run the cli on.
+        pn_action: 'create'                              #The VLAN action to perform on the switches.
+        pn_vlanid: '241'                           #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                             #Scope for VLAN - fabric/local/cluster.
+        #pn_description: 'ansible-vlans'               #VLAN description.
+        pn_vxlan: 2410                                  #VXLAN tunnel mapped to VLAN.
+      register: output
+    - debug:
+        var: output
+
+
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_cliusername: "{{ ansible_user }}"               #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"               #Provide login password if user is not root.
+        #pn_cliswitch: spine, leaf                 #Target switch to run the cli on.
+        pn_action: 'create'                              #The VLAN action to perform on the switches.
+        pn_vlanid: '242'                           #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                             #Scope for VLAN - fabric/local/cluster.
+        #pn_description: 'ansible-vlans'               #VLAN description.
+        pn_vxlan: '2420'                                  #VXLAN tunnel mapped to VLAN.
+      register: output
+    - debug:
+        var: output
+
+
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_cliusername: "{{ ansible_user }}"               #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"               #Provide login password if user is not root.
+        #pn_cliswitch: spine, leaf                 #Target switch to run the cli on.
+        pn_action: 'create'                              #The VLAN action to perform on the switches.
+        pn_vlanid: '243'                           #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                             #Scope for VLAN - fabric/local/cluster.
+        #pn_description: 'ansible-vlans'               #VLAN description.
+        pn_vxlan: '2430'                                  #VXLAN tunnel mapped to VLAN.
+      register: output
+    - debug:
+        var: output
+
+
+ #This task is to configure VXLAN full mesh.
+ #It uses pn_ztp_vxlan.py module from library/ directory.
+ #pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: ZTP VXLAN configuration
+  hosts: spine[0]
+  tags: VXLAN_CONFIGURATION
+  gather_facts: False
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: ZTP Vxlan configuration
+      pn_ztp_vxlan:
+        pn_cliusername: "{{ ansible_user }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"               # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] | default([]) }}"   # List of spine switches
+        pn_leaf_list: "{{ groups['leaf'] | default([])}}"      # List of leaf switches
+        pn_tunnel_mode: 'full-mesh'                            # Flag to indicate tunnel mode type Choices: full-mesh or manual.  Default: full-mesh.
+        pn_tunnel_loopback_port: '47'                          # Port to configure loopback
+        pn_tunnel_vxlan_id: '6100,2410,2420,2430'              # Specify vxlan id for configuration
+        pn_tunnel_overlay_vlan: '490'                          # Specify overlay vlan
+      register: vxlan_config                                   # Variable to hold/register output of the above tasks.
+      until: vxlan_config.failed != true                       # If the above code fails it will retry the code
+      retries: 3                                               # This is the retries count
+      delay: 3
+      ignore_errors: yes                                       # Flag to indicate if we should ignore errors if any.
+
+    - pause:
+        seconds: 1                                             # Pause playbook execution for specified amount of time.
+
+
+- name: snmp user module
+  hosts: leaf[0]
+  tags: SNMP_USER_CREATE
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-user functionality
+      pn_snmp_user:
+        pn_cliusername: "{{ ansible_user }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "hmplabpsq-we60100"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #snmp-user configuration command: create/delete.
+        pn_user_name: "VINETro"                   
+        pn_auth: False
+        pn_priv: False
+        #pn_auth_pass: 'test1234'
+        #pn_priv_pass: 'test1234'
+        #pn_auth_hash: 'sha'                                 # options: md5/sha
+               
+      register: output
+    - debug:
+        var: output
+
+
+- name: snmp community module
+  hosts: leaf[0]
+  tags: SNMP_COMMUNITY
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-community functionality
+      pn_snmp_community:
+        pn_cliusername: "{{ ansible_user }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "hmplabpsq-we60100"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #snmp-community configuration command: create/delete/modify.
+        pn_community_string: "football"                       
+        pn_community_type: "read-write"                       
+      register: output
+    - debug:
+        var: output
+
+
+    - name: snmp-community functionality
+      pn_snmp_community:
+        pn_cliusername: "{{ ansible_user }}"                   #Provide login username if user is not root.
+        pn_clipassword: "{{ ansible_ssh_pass }}"                         #Provide login password if user is not root.
+        pn_cliswitch: "hmplabpsq-we60100"                  #Target switch to run the CLI on.
+        pn_action: "create"                             #snmp-community configuration command: create/delete/modify.
+        pn_community_string: "baseball"
+        pn_community_type: "read-only"
+      register: output
+    - debug:
+        var: output
