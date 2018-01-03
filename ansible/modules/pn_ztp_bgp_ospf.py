@@ -21,6 +21,7 @@
 import shlex
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -42,16 +43,6 @@ description: It performs following steps:
       - Assign ospf_neighbor
       - Assign ospf_redistribute
 options:
-    pn_cliusername:
-      description:
-        - Provide login username if user is not root.
-      required: False
-      type: str
-    pn_clipassword:
-      description:
-        - Provide login password if user is not root.
-      required: False
-      type: str
     pn_spine_list:
       description:
         - Specify list of Spine hosts
@@ -128,8 +119,6 @@ options:
 EXAMPLES = """
 - name: Configure eBGP/OSPF
   pn_ztp_bgp_ospf:
-    pn_cliusername: "{{ USERNAME }}"
-    pn_clipassword: "{{ PASSWORD }}"
     pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
 """
@@ -166,23 +155,6 @@ msg:
 """
 
 CHANGED_FLAG = []
-
-
-def pn_cli(module):
-    """
-    Method to generate the cli portion to launch the Netvisor cli.
-    :param module: The Ansible module to fetch username and password.
-    :return: The cli string for further processing.
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    return cli
 
 
 def run_cli(module, cli):
@@ -676,58 +648,6 @@ def configure_ospf_bfd(module, vrouter, ip):
         return ''
 
 
-def add_ospf_loopback(module, current_switch):
-    """
-    Method to add ospf_neighbor for loopback network for switches.
-    :param module: The Ansible module to fetch input parameters.
-    :return: String describing if OSPF Neighbor got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    ospf_area_id = module.params['pn_ospf_area_id']
-    vrouter = current_switch + '-vrouter'
-
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' vrouter-loopback-interface-show vrouter-name %s' % vrouter
-    cli += ' format ip no-show-headers'
-    cli_out = list(set(run_cli(module, cli).split()))
-    if 'Success' not in cli_out:
-        cli_out.remove(vrouter)
-        for loopback_ip in cli_out:
-            if '.' in loopback_ip:
-                lb_net = loopback_ip + '/32'
-                cli = clicopy
-                cli += ' vrouter-ospf-show'
-                cli += ' network %s format switch no-show-headers ' % lb_net
-                already_added = run_cli(module, cli).split()
-                if vrouter in already_added:
-                    pass
-                else:
-                    cli = clicopy
-                    cli += ' vrouter-ospf-add vrouter-name ' + vrouter
-                    cli += ' network %s ospf-area %s' % (lb_net, ospf_area_id)
-        
-                    if 'Success' in run_cli(module, cli):
-                        output += ' %s: Added OSPF neighbor %s to %s \n' % (current_switch,
-                                                                            lb_net, vrouter)
-                        CHANGED_FLAG.append(True)
-            elif ':' in loopback_ip:
-                cli = clicopy
-                cli += 'vrouter-ospf6-show nic lo format switch no-show-headers '
-                ipv6_vrouter = run_cli(module, cli).split()
-    
-                if vrouter not in ipv6_vrouter:
-                    cli = clicopy
-                    cli += 'vrouter-ospf6-add vrouter-name %s nic lo ospf6-area %s ' % (
-                        vrouter, module.params['pn_ospf_v6_area_id'])
-                    run_cli(module, cli)
-                    output += ' %s: Added OSPF6 nic lo to %s \n' % (
-                        current_switch, vrouter
-                    )
-
-    return output
-
 
 #def find_area_id_leaf_switches(module):
 #    """
@@ -1024,8 +944,8 @@ def assign_leafcluster_ospf_interface(module):
     iospf_ip_range = module.params['pn_iospf_ip_range']
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
-    subnet_count = 0
-    supernet = 30
+    subnet_count = module.params['pn_subnet_ipv4']
+    supernet = module.params['pn_super_net_ipv4']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -1123,8 +1043,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str'),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_current_switch=dict(required=False, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
@@ -1138,11 +1056,13 @@ def main():
                                                'rip', 'ospf'],
                                       default='none'),
             pn_bgp_maxpath=dict(required=False, type='str', default='16'),
+            pn_subnet_ipv4=dict(required=False, type='str', default='23'),
             pn_bfd=dict(required=False, type='bool', default=False),
             pn_ibgp_ip_range=dict(required=False, type='str',
                                   default='75.75.75.0/24'),
             pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
             pn_iospf_vlan=dict(required=False, type='str', default='4040'),
+            pn_super_net_ipv4=dict(required=False, type='str', default='31'),
             pn_iospf_ip_range=dict(required=False, type='str',
                                    default='75.75.75.0/24'),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
@@ -1180,7 +1100,6 @@ def main():
         message += add_bgp_neighbor(module, dict_bgp_as)
         message += assign_ibgp_interface(module, dict_bgp_as)
     elif routing_protocol == 'ospf':
-        message += add_ospf_loopback(module, current_switch)
         message += add_ospf_neighbor(module, current_switch)
         message += add_ospf_redistribute(module, current_switch)
         message += make_interface_passive(module, current_switch)

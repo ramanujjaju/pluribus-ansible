@@ -20,6 +20,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 
 DOCUMENTATION = """
@@ -34,21 +35,6 @@ description:
     0 and 4095 are reserved and cannot be used per the IEEE 802.1Q standard.
     The range of configurable VLAN identifiers is 2 through 4092.
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
-  pn_cliswitch:
-    description:
-      - Target switch(es) to run the cli on.
-    required: False
-    type: str
   pn_action:
     description:
       - The VLAN action to perform on the switches.
@@ -146,28 +132,6 @@ MIN_VLAN_ID = 2
 CHANGED_FLAG = []
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def run_cli(module, cli):
     """
     Method to execute the cli command on the target node(s) and returns the
@@ -176,7 +140,6 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
-    results = []
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -207,9 +170,7 @@ def get_existing_vlans(module):
     :return: list of existing vlans.
     """
     cli = pn_cli(module)
-    cliswitch = module.params['pn_cliswitch']
-    if cliswitch is None:
-        cli += ' switch-local '
+    cli += ' switch-local '
     cli += ' vlan-show format id, no-show-headers'
     existing_vlans = run_cli(module, cli).splitlines()
     vlan_list = []
@@ -230,8 +191,8 @@ def expand_range(range_str):
         if '-' not in value:
             range_to_list.append(int(value))
         else:
-            l, h = map(int, value.split('-'))
-            range_to_list += range(l, h+1)
+            low, high = map(int, value.split('-'))
+            range_to_list += range(low, high+1)
     return range_to_list
 
 
@@ -325,9 +286,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
             pn_vlanid=dict(required=True, type='str'),
@@ -355,12 +313,10 @@ def main():
     existing_vlans = get_existing_vlans(module)
     vlan_list = expand_range(vlanid)
     vlan_list = list(set(vlan_list))
-    cliswitch = module.params['pn_cliswitch']
     message = ''
     global CHANGED_FLAG
 
-    if cliswitch is None:
-        cliswitch = get_switch_name(module)
+    cliswitch = get_switch_name(module)
 
     for vlan in vlan_list:
         if vlan not in range(MIN_VLAN_ID, MAX_VLAN_ID+1):

@@ -543,6 +543,8 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
         cli += ' l3-port ' + port
         if module.params['pn_jumbo_frames'] == True:
             cli += ' mtu 9216'
+        if module.params['pn_if_nat_realm']:
+            cli += ' if-nat-realm ' + module.params['pn_if_nat_realm']
         run_cli(module, cli)
         # Add BFD config to vrouter interface.
         if module.params['pn_bfd']:
@@ -824,6 +826,8 @@ def main():
             pn_supernet_ipv6=dict(required=False, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
+            pn_if_nat_realm=dict(required=False, type='str',
+                                 choices=['internal', 'external'], default='internal'),
             pn_update_fabric_to_inband=dict(required=False, type='bool',
                                             default=False),
             pn_loopback_ip=dict(required=False, type='str',

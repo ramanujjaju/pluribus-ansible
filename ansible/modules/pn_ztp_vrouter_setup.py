@@ -21,6 +21,7 @@
 import shlex
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -28,16 +29,6 @@ module: pn_ztp_vrouter_setup
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 description: Module to create vrouters.
 options:
-    pn_cliusername:
-      description:
-        - Provide login username if user is not root.
-      required: False
-      type: str
-    pn_clipassword:
-      description:
-        - Provide login password if user is not root.
-      required: False
-      type: str
     pn_switch_list:
       description:
         - Specify list of all switches.
@@ -59,8 +50,6 @@ options:
 EXAMPLES = """
 - name: Create Vrouters
   pn_ztp_vrouter_setup:
-    pn_cliusername: "{{ USERNAME }}"
-    pn_clipassword: "{{ PASSWORD }}"
     pn_switch_list: "{{ groups['switch'] }}"
     pn_vrrp_id: '18'
 """
@@ -97,23 +86,6 @@ msg:
 """
 
 CHANGED_FLAG = []
-
-
-def pn_cli(module):
-    """
-    Generate the cli portion to launch the Netvisor cli.
-    :param module: The Ansible module to fetch username and password.
-    :return: The cli string for further processing.
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    return cli
 
 
 def run_cli(module, cli):
@@ -297,35 +269,10 @@ def assign_loopback_and_router_id(module, loopback_address, current_switch):
     return output
 
 
-def pim_modify(module):
-    """
-    Modify pim-config in vrouter.
-    :param module: The Ansible module to fetch input parameters.
-    :return: String describing if vrouter got created or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-
-    cli = pn_cli(module)
-    cli += 'vrouter-show format name no-show-headers '
-    vrouter_list = run_cli(module, cli).strip().split()
-    for vrouter in vrouter_list:
-        cli = pn_cli(module)
-        cli += ' vrouter-pim-config-modify vrouter-name %s' % vrouter
-        cli += ' query-interval 10 querier-timeout 30'
-        run_cli(module, cli)
-        output += '%s: Successfully modified pim-config' % vrouter
-        CHANGED_FLAG.append(True)
-
-    return output
-
-
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str'),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_loopback_ip=dict(required=False, type='str', default=''),
             pn_vrrp_id=dict(required=False, type='str', default=''),
             pn_current_switch=dict(required=False, type='str'),
@@ -355,7 +302,6 @@ def main():
 
     # Assign loopback ip to vrouters
     message += assign_loopback_and_router_id(module, loopback_address, current_switch)
-    message += pim_modify(module)
 
     replace_string = current_switch + ': '
     for line in message.splitlines():

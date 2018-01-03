@@ -21,6 +21,7 @@
 import shlex
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -29,16 +30,6 @@ author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configre VXLAN
 description: VXLAN configuration for switch setup
 options:
-    pn_cliusername:
-      description:
-        - Provide login username if user is not root.
-      required: False
-      type: str
-    pn_clipassword:
-      description:
-        - Provide login password if user is not root.
-      required: False
-      type: str
     pn_spine_list:
       description:
         - Specify list of Spine hosts
@@ -89,8 +80,6 @@ options:
 EXAMPLES = """
 - name: Configure VXLAN
   pn_ztp_vxlan:
-    pn_cliusername: "{{ USERNAME }}"
-    pn_clipassword: "{{ PASSWORD }}"
     pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
     pn_tunnel_mode: "full-mesh"
@@ -100,8 +89,6 @@ EXAMPLES = """
 
 - name: Configure VXLAN
   pn_ztp_vxlan:
-    pn_cliusername: "{{ USERNAME }}"
-    pn_clipassword: "{{ PASSWORD }}"
     pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
     pn_tunnel_mode: "manual"
@@ -144,22 +131,6 @@ msg:
 """
 
 CHANGED_FLAG = []
-
-def pn_cli(module):
-    """
-    Method to generate the cli portion to launch the Netvisor cli.
-    :param module: The Ansible module to fetch username and password.
-    :return: The cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    return cli
 
 
 def run_cli(module, cli):
@@ -412,8 +383,6 @@ def find_nodes(module, vlan_id):
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(argument_spec=dict(
-        pn_cliusername=dict(required=True, type='str'),
-        pn_clipassword=dict(required=True, type='str', no_log=True),
         pn_spine_list=dict(required=True, type='list'),
         pn_leaf_list=dict(required=True, type='list'),
         pn_tunnel_mode=dict(required=False, type='str', default='full-mesh',

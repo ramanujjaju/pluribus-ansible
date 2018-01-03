@@ -21,6 +21,7 @@ import shlex
 import time
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -36,16 +37,6 @@ description:
         - Create/Join fabric
         - Enable STP
 options:
-    pn_cliusername:
-      description:
-        - Provide login username if user is not root.
-      required: False
-      type: str
-    pn_clipassword:
-      description:
-        - Provide login password if user is not root.
-      required: False
-      type: str
     pn_fabric_name:
       description:
         - Specify name of the fabric.
@@ -81,11 +72,16 @@ options:
         - Specify list of leaf hosts
       required: False
       type: list
-    pn_inband_ip:
+    pn_inband_ipv4:
       description:
         - Inband ips to be assigned to switches starting with this value.
       required: False
-      default: 172.16.0.0/24.
+      default: 192.168.0.1/24.
+      type: str
+    pn_inband_ipv6:
+      description:
+        - Inband ips to be assigned to switches starting with this value.
+      required: False
       type: str
     pn_current_switch:
       description:
@@ -161,9 +157,7 @@ options:
 
 EXAMPLES = """
 - name: Fabric creation/join
-    pn_fabric_creation:
-      pn_cliusername: "{{ USERNAME }}"
-      pn_clipassword: "{{ PASSWORD }}"
+    pn_ztp_initial_setup:
       pn_fabric_name: 'ztp-fabric'
       pn_current_switch: "{{ inventory_hostname }}"
       pn_spine_list: "{{ groups['spine'] }}"
@@ -202,23 +196,6 @@ msg:
 """
 
 CHANGED_FLAG = []
-
-
-def pn_cli(module):
-    """
-    Method to generate the cli portion to launch the Netvisor cli.
-    :param module: The Ansible module to fetch username and password.
-    :return: The cli string for further processing.
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    return cli
 
 
 def run_cli(module, cli):
@@ -657,23 +634,23 @@ def toggle_local(module):
     return output
 
 
-def assign_inband_ip(module):
-    """
-    Method to assign in-band ips to switches.
-    :param module: The Ansible module to fetch input parameters.
-    :return: String describing in-band ip got assigned or not.
-    """
-    global CHANGED_FLAG
-    address = module.params['pn_inband_ip'].split('.')
-    static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    static_part += str(address[2]) + '.'
-    last_octet = str(address[3]).split('/')
-    subnet = last_octet[1]
+def assign_inband_ipv6(module):
 
+    global CHANGED_FLAG
     switches_list = []
+    switch_ip = {}
     spines = module.params['pn_spine_list']
     leafs = module.params['pn_leaf_list']
     switch = module.params['pn_current_switch']
+
+    if module.params['pn_inband_ipv6']:
+        address = module.params['pn_inband_ipv6'].split('::')
+        static_part = str(address[0]) + '::'
+        last_octet = str(address[1]).split('/')
+        subnet = last_octet[1]
+        count = int(last_octet[0])
+    else:
+        return 'in-band ipv6 not specified '
 
     if spines:
         switches_list += spines
@@ -681,34 +658,77 @@ def assign_inband_ip(module):
     if leafs:
         switches_list += leafs
 
-    if switches_list:
-        ip_count = switches_list.index(switch) + 1
-        ip = static_part + str(ip_count) + '/' + subnet
 
-        # Get existing in-band ip.
-        cli = pn_cli(module)
-        clicopy = cli
-        cli += ' switch-local switch-setup-show format in-band-ip '
-        existing_inband_ip = run_cli(module, cli)
+    for sw in switches_list:
+        switch_ip[sw] = static_part + str(count) + '/' + subnet
+        count += 1
 
-        if ip not in existing_inband_ip:
-            cli = clicopy
-            cli += ' switch-local switch-setup-modify '
-            cli += ' in-band-ip ' + ip
-            run_cli(module, cli)
-            CHANGED_FLAG.append(True)
+    # Get existing in-band ip.
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' switch-local switch-setup-show format in-band-ip6'
+    existing_inband_ip = run_cli(module, cli).split()
 
-        return 'Assigned in-band ip ' + ip
+    if switch_ip[switch] not in existing_inband_ip:
+        cli = clicopy
+        cli += ' switch %s switch-setup-modify ' % switch
+        cli += ' in-band-ip6 ' + switch_ip[switch]
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
 
-    return 'Could not assign in-band ip'
+    return 'Assigned in-band ipv6 ' + switch_ip[switch]
+
+
+def assign_inband_ipv4(module):
+
+    global CHANGED_FLAG
+    switches_list = []
+    switch_ip = {}
+    spines = module.params['pn_spine_list']
+    leafs = module.params['pn_leaf_list']
+    switch = module.params['pn_current_switch']
+
+    if module.params['pn_inband_ipv4']:
+        address = module.params['pn_inband_ipv4'].split('.')
+        static_part = str(address[0]) + '.' + str(address[1]) + '.'
+        static_part += str(address[2]) + '.'
+        last_octet = str(address[3]).split('/')
+        subnet = last_octet[1]
+        count = int(last_octet[0])
+    else:
+        return 'in-band ipv4 not specified '
+
+    if spines:
+        switches_list += spines
+
+    if leafs:
+        switches_list += leafs
+
+
+    for sw in switches_list:
+        switch_ip[sw] = static_part + str(count) + '/' + subnet
+        count += 1
+
+    # Get existing in-band ip.
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' switch-local switch-setup-show format in-band-ip'
+    existing_inband_ip = run_cli(module, cli).split()
+
+    if switch_ip[switch] not in existing_inband_ip:
+        cli = clicopy
+        cli += ' switch %s switch-setup-modify ' % switch
+        cli += ' in-band-ip ' + switch_ip[switch]
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+
+    return 'Assigned in-band ip ' + switch_ip[switch]
 
 
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_fabric_name=dict(required=True, type='str'),
             pn_fabric_network=dict(required=False, type='str',
                                    choices=['mgmt', 'in-band'], default='mgmt'),
@@ -718,7 +738,8 @@ def main():
             pn_toggle_port_speed=dict(required=False, type='bool', default=True),
             pn_spine_list=dict(required=False, type='list', default=[]),
             pn_leaf_list=dict(required=False, type='list', default=[]),
-            pn_inband_ip=dict(required=False, type='str', default='192.16.0.0/24'),
+            pn_inband_ipv4=dict(required=False, type='str', default='192.16.0.1/24'),
+            pn_inband_ipv6=dict(required=False, type='str'),
             pn_current_switch=dict(required=False, type='str'),
             pn_static_setup=dict(required=False, type='bool', default=False),
             pn_mgmt_ip=dict(required=False, type='str'),
@@ -731,8 +752,8 @@ def main():
             pn_web_api=dict(type='bool', default=True),
             pn_stp=dict(required=False, type='bool', default=True),
             pn_autotrunk=dict(required=False, type='str',
-                              choices=['enable', 'disable'], default='disable'),
-            pn_autoneg=dict(required=False, type='bool', default=False)
+                              choices=['enable', 'disable']),
+            pn_autoneg=dict(required=False, type='bool')
         )
     )
 
@@ -829,8 +850,15 @@ def main():
                 'output': 'Toggled 40G/100g ports to 10G/25g '
             })
 
-    # Assign in-band ips.
-    out = assign_inband_ip(module)
+    # Assign in-band ipv4.
+    out = assign_inband_ipv4(module)
+    results.append({
+        'switch': current_switch,
+        'output': out
+    })
+
+    # Assign in-band ipv6.
+    out = assign_inband_ipv6(module)
     results.append({
         'switch': current_switch,
         'output': out

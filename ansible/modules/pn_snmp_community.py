@@ -19,30 +19,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
-
-
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    cli = '/usr/bin/cli --quiet '
-
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    cli += ' snmp-community-'
-
-    return cli
+from ansible.module_utils.pn_nvos import pn_cli
 
 
 def run_cli(module, cli):
@@ -83,7 +60,7 @@ def run_cli(module, cli):
 
 def check_community(module, community_string):
     cli = pn_cli(module)
-    cli += 'show community-string ' + community_string
+    cli += ' snmp-community-show community-string ' + community_string
     cli = shlex.split(cli)
     return module.run_command(cli)[1]
 
@@ -92,9 +69,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str', choices=['create', 'delete', 'modify']),
             pn_community_string=dict(required=True, type='str'),
             pn_community_type=dict(required=False, type='str', choices=['read-only', 'read-write']),
@@ -121,7 +95,7 @@ def main():
         )
     
     cli = pn_cli(module)   
-    cli += action + ' community-string ' + community_string
+    cli += ' snmp-community-'+ action + ' community-string ' + community_string
     if community_type and action != 'delete':
         cli += ' community-type ' + community_type
 

@@ -144,8 +144,6 @@ options:
 EXAMPLES = """
 - name: Add vrouter-interface
   pn_vrouter_iface:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_action: 'add'
     pn_vrouter: 'ansible-vrouter'
     pn_interface_ip: 101.101.101.2/24
@@ -153,8 +151,6 @@ EXAMPLES = """
 
 - name: Add VRRP to the above added interface
   pn_vrouter_iface:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_action: 'add'
     pn_vrouter: 'ansible-vrouter'
     pn_interface_ip: 101.101.101.2/24
@@ -164,16 +160,12 @@ EXAMPLES = """
 
 - name: Remove vrouter-interface
   pn_vrouter_iface:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_action: 'remove'
     pn_vrouter: 'ansible-vrouter'
     pn_nic: 'eth1.101'
 
 - name: Modify vrouter-interface
   pn_vrouter_iface:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_action: modify
     pn_vrouter: 'ansible-vrouter'
     pn_nic: 'eth1.101'
@@ -215,14 +207,9 @@ def pn_cli(module):
     :param module: The Ansible module to fetch username, password and switch
     :return: returns the cli string for further processing
     """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
     cliswitch = module.params['pn_cliswitch']
 
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user "%s":"%s" ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
+    cli = '/usr/bin/cli --quiet '
 
     if cliswitch:
         cli += ' switch ' + cliswitch
@@ -364,8 +351,6 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['add', 'remove', 'modify']),

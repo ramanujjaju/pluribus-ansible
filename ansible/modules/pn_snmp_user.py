@@ -28,14 +28,9 @@ def pn_cli(module):
     :param module: The Ansible module to fetch username, password and switch
     :return: returns the cli string for further processing
     """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
     cliswitch = module.params['pn_cliswitch']
 
     cli = '/usr/bin/cli --quiet --script-password '
-
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
 
     if cliswitch:
         cli += ' switch ' + cliswitch
@@ -82,6 +77,11 @@ def run_cli(module, cli):
 
 
 def check_user(module, user_name):
+    """
+    This method is to checks user exists or not.
+    :param user_name: the user to be checked.
+    :return: String of user if exists else Success.
+    """
     cli = pn_cli(module)
     cli += 'show user-name ' + user_name
     cli = shlex.split(cli)
@@ -92,16 +92,16 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str', choices=['create', 'delete', 'modify']),
+            pn_action=dict(required=True, type='str',
+                           choices=['create', 'delete', 'modify']),
             pn_user_name=dict(required=True, type='str'),
             pn_auth=dict(required=False, type='bool', default=False),
             pn_priv=dict(required=False, type='bool', default=False),
             pn_auth_pass=dict(required=False, type='str'),
             pn_priv_pass=dict(required=False, type='str'),
-            pn_auth_hash=dict(required=False, type='str', choices=['sha', 'md5']),
+            pn_auth_hash=dict(required=False, type='str',
+                              choices=['sha', 'md5']),
         )
     )
 
@@ -116,16 +116,19 @@ def main():
     if action == 'create':
         if check_user(module, user_name):
             module.fail_json(
-                msg='snmp-user with name %s already present in the switch' % user_name
+                msg='snmp-user with name %s \
+                     already present in the switch' % user_name
             )
     elif action == 'delete' or action == 'modify':
         if not check_user(module, user_name):
             module.fail_json(
-                msg='snmp-user with name %s not present in the switch' % user_name
+                msg='snmp-user with name %s \
+                     not present in the switch' % user_name
             )
     else:
         module.fail_json(
-            msg='snmp-user action %s not supported in this playbook. Use create/delete' % action
+            msg='snmp-user action %s not supported \
+                 in this playbook. Use create/delete' % action
         )
 
     cli = pn_cli(module)
