@@ -98,8 +98,8 @@ def main():
             pn_user_name=dict(required=True, type='str'),
             pn_auth=dict(required=False, type='bool', default=False),
             pn_priv=dict(required=False, type='bool', default=False),
-            pn_auth_pass=dict(required=False, type='str'),
-            pn_priv_pass=dict(required=False, type='str'),
+            pn_auth_pass=dict(required=False, type='str', no_log=True),
+            pn_priv_pass=dict(required=False, type='str', no_log=True),
             pn_auth_hash=dict(required=False, type='str',
                               choices=['sha', 'md5']),
         )

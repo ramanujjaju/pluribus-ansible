@@ -7,7 +7,7 @@ def pn_cli(module, switch=None):
     :return: The cli string for further processing.
     """
 
-    cli = '/usr/bin/cli --quiet -e '
+    cli = '/usr/bin/cli --quiet -e --no-login-prompt '
 
     if switch:
         cli += ' switch ' + switch

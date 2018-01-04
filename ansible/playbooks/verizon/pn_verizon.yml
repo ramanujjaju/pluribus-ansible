@@ -59,7 +59,7 @@
 #        pn_domain_name: 'HEMPLAB.VERIZON.COM'         # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
 #        pn_ntp_server: '0.us.pool.ntp.org'             # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
-        pn_stp: True                                  # Specify True if you want to enable STP at the end. Default: False.
+        pn_stp: False                                  # Specify True if you want to enable STP at the end. Default: False.
       register: ztp_out                                # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true                    # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
@@ -160,7 +160,7 @@
   - cli_vault.yml
 
   vars:
-  - csv_file: /etc/ansible/pluribus-ansible/ansible/vrrp_verizon.csv
+  - csv_file: vrrp_verizon.csv
 
   tasks:
     - name: Configure L3 vrrp

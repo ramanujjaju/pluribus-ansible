@@ -944,7 +944,7 @@ def assign_leafcluster_ospf_interface(module):
     iospf_ip_range = module.params['pn_iospf_ip_range']
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
-    subnet_count = module.params['pn_subnet_ipv4']
+    subnet_count = int(module.params['pn_subnet_ipv4'])
     supernet = module.params['pn_super_net_ipv4']
 
     cli = pn_cli(module)
