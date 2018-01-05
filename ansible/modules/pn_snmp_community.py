@@ -81,7 +81,7 @@ def main():
 
     if action == 'create':
         if check_community(module, community_string):
-            module.fail_json(
+            module.exit_json(
                 msg='snmp-community with name %s already present in the switch' % community_string
             )
     elif action == 'modify' or action == 'delete':

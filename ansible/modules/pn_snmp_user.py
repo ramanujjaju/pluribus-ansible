@@ -121,7 +121,7 @@ def main():
             )
     elif action == 'delete' or action == 'modify':
         if not check_user(module, user_name):
-            module.fail_json(
+            module.exit_json(
                 msg='snmp-user with name %s \
                      not present in the switch' % user_name
             )

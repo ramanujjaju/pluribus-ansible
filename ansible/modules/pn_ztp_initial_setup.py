@@ -297,9 +297,13 @@ def modify_stp_local(module, modify_flag):
     """
     cli = pn_cli(module)
     cli += ' switch-local stp-show format enable '
-    current_state = run_cli(module, cli).split()[1]
+    current_state = run_cli(module, cli).split()
 
-    if current_state == 'yes':
+    if len(current_state) == 1:
+        cli = pn_cli(module)
+        cli += ' switch-local stp-modify ' + modify_flag
+        return run_cli(module, cli)
+    elif current_state[1] == 'yes':
         cli = pn_cli(module)
         cli += ' switch-local stp-modify ' + modify_flag
         return run_cli(module, cli)
@@ -351,9 +355,13 @@ def configure_control_network(module, network):
     """
     cli = pn_cli(module)
     cli += ' fabric-info format control-network '
-    current_control_network = run_cli(module, cli).split()[1]
+    current_control_network = run_cli(module, cli).split()
 
-    if current_control_network != network:
+    if len(current_control_network) == 1:
+        cli = pn_cli(module)
+        cli += ' fabric-local-modify control-network ' + network
+        return run_cli(module, cli)
+    elif current_control_network[1] != network:
         cli = pn_cli(module)
         cli += ' fabric-local-modify control-network ' + network
         return run_cli(module, cli)
@@ -800,7 +808,7 @@ def main():
         })
 
     # Configure fabric control network to either mgmt or in-band
-    if 'Success' in configure_control_network(module, control_network):
+    if ('Success' or 'created') in configure_control_network(module, control_network):
         CHANGED_FLAG.append(True)
         results.append({
             'switch': current_switch,
