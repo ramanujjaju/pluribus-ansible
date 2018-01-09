@@ -3,8 +3,9 @@
 
 
 # This task is to accept eula.
-# It uses pn_eula_accept.py module from library/ directory.
+# It uses pn_ztp_eula_accept.py module from library/modules directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# Accpts eula of each switch.
 - name: Zero Touch Provisioning - Eula accept
   hosts: localhost
   tags: eula-accept
@@ -27,9 +28,9 @@
 ## NOTE : ansible_ssh_pass should be provided in cli_vault.yml according to your requirement.
 
 # This task is to configure initial ZTP setup on all switches.
-# It uses pn_initial_ztp.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# It uses pn_ztp_initial_setup.py module from library/ directory.
 # If the tasks fails then it will retry as specified by retries count.
+# sets up initial fabric setup of the switch.
 - name: Zero Touch Provisioning - Initial setup
   hosts: all
   tags: fabric-setup
@@ -41,22 +42,22 @@
   tasks:
     - name: Disable STP, enable ports and create/join fabric
       pn_ztp_initial_setup:
-        pn_fabric_name: "Vz_HMPLAB_FABRIC1"      # Name of the fabric to create/join.
+        pn_fabric_name: "Vz_HMPLAB_FABRIC1"            # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
-        pn_inband_ipv4: '104.255.62.40/27'               # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
+        pn_inband_ipv4: '104.255.65.40/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
         pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
-        pn_static_setup: False                         # Flag to indicate if static values should be assign to following switch setup params. Default: True.
+        pn_static_setup: 'false'                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
         pn_mgmt_ip_subnet: '16'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
-        pn_gateway_ip: '104.254.1.1'                      # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
-#        pn_dns_ip: '104.255.40.101'                        # Specify DNS-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: '104.254.1.1'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+#        pn_dns_ip: '104.255.40.101'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
         pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
-#        pn_domain_name: 'HEMPLAB.VERIZON.COM'         # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+#        pn_domain_name: 'HEMPLAB.VERIZON.COM'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
 #        pn_ntp_server: '0.us.pool.ntp.org'             # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
         pn_stp: False                                  # Specify True if you want to enable STP at the end. Default: False.
@@ -64,14 +65,12 @@
       until: ztp_out.failed != true                    # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
       delay: 3
-
     - pause:
         seconds: 2                                     # Pause playbook execution for specified amount of time.
 
 
 # This task will create vrouter on spine switches.
 # It uses pn_ztp_vrouter_setup.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: Configure vrouter
   hosts: spine
@@ -83,23 +82,22 @@
   tasks:
     - name: Setup vrouter
       pn_ztp_vrouter_setup:
-        pn_loopback_ip: '104.255.61.1/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
-        pn_loopback_ip_v6: '2620:0000:167F:b000::10/128'          # Loopback network to confgure ipv6 loopback ips vrouters.
+        pn_loopback_ip: '104.255.61.1/32'              # Loopback network to confgure ipv4 loopback ips to vrouters.
+        pn_loopback_ip_v6: '2620:0000:167F:b000::10/128' # Loopback network to confgure ipv6 loopback ips vrouters.
         pn_vrrp_id: '15'                               # Vrrp-id for the vrouters
         pn_current_switch: "{{ inventory_hostname }}"  # The name of the current executing switch
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
-        pn_ospf_redistribute: 'static'                   # Variable to configure ospf redistribute
-      register: vrouter_out                                # Variable to hold/register output of the above tasks.
-      until: vrouter_out.failed != true                    # If the above code fails it will retry the code
+        pn_ospf_redistribute: 'static'                 # Variable to configure ospf redistribute
+      register: vrouter_out                            # Variable to hold/register output of the above tasks.
+      until: vrouter_out.failed != true                # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
       delay: 3
 
 
 # This task will create vrouter on leaf switches.
 # It uses pn_ztp_vrouter_setup.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: Configure vrouter
   hosts: leaf[0:3]
@@ -112,18 +110,17 @@
     - name: Setup vrouter
       pn_ztp_vrouter_setup:
         pn_loopback_ip: '104.255.61.5/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
-        pn_loopback_ip_v6: '2620:0000:167F:b000::14/128'          # Loopback network to confgure ipv6 loopback ips vrouters.
-        pn_vrrp_id: '15'                               # Vrrp-id for the vrouters
-        pn_current_switch: "{{ inventory_hostname }}"  # The name of the current executing switch
-        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
-        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
-        pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
+        pn_loopback_ip_v6: '2620:0000:167F:b000::14/128'  # Loopback network to confgure ipv6 loopback ips vrouters.
+        pn_vrrp_id: '15'                                # Vrrp-id for the vrouters
+        pn_current_switch: "{{ inventory_hostname }}"   # The name of the current executing switch
+        pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_pim_ssm: True                                # Variable to specify pim_ssm for ospf
         pn_ospf_redistribute: 'static' 
 
 
 # This task will create vrouter on leaf switches.
 # It uses pn_ztp_vrouter_setup.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 #- name: Configure vrouter
 #  hosts: leaf[4:5]
@@ -135,13 +132,13 @@
 #  tasks:
 #    - name: Setup vrouter
 #      pn_ztp_vrouter_setup:
-#        pn_loopback_ip: '104.255.61.7/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
-#        pn_loopback_ip_v6: '2620:0000:167F:b000::18/128'          # Loopback network to confgure ipv6 loopback ips vrouters.
-#        pn_vrrp_id: '15'                               # Vrrp-id for the vrouters
-#        pn_current_switch: "{{ inventory_hostname }}"  # The name of the current executing switch
-#        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
-#        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
-#        pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
+#        pn_loopback_ip: '104.255.61.7/32'                 # Loopback network to confgure ipv4 loopback ips to vrouters.
+#        pn_loopback_ip_v6: '2620:0000:167F:b000::18/128'  # Loopback network to confgure ipv6 loopback ips vrouters.
+#        pn_vrrp_id: '15'                                  # Vrrp-id for the vrouters
+#        pn_current_switch: "{{ inventory_hostname }}"     # The name of the current executing switch
+#        pn_spine_list: "{{ groups['spine'] }}"            # List of all spine switches mentioned under [spine] grp in hosts file.
+#        pn_leaf_list: "{{ groups['leaf'] }}"              # List of all leaf switches mentioned under [leaf] grp in hosts file.
+#        pn_pim_ssm: True                                  # Variable to specify pim_ssm for ospf
 #        pn_ospf_redistribute: 'static,bgp'
 #        pn_bgp_as: '65542'
 #        pn_bgp_redistribute: 'static,ospf'
@@ -151,7 +148,6 @@
 # This task is to configure VRRP for Layer 3 fabric.
 # It takes required VRRP config data from csv file.
 # It uses pn_ztp_l3_vrrp.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: Configure L3 VRRP
   hosts: leaf
   tags: l3-vrrp
@@ -184,7 +180,6 @@
 
 # This task is to configure ZTP for layer3 fabric.
 # It uses pn_ztp_l3_links.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: Configure L3 links 
   hosts: leaf
@@ -200,12 +195,12 @@
         pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_addr_type: 'ipv4_ipv6'                       # The type of address scheme to be used. Options: ipv4/dual_stack.
-        pn_net_address_ipv4: "104.255.61.68"              # Ipv4 Network address required to calculate link IPs for layer3 fabric.
+        pn_net_address_ipv4: "104.255.61.68"            # Ipv4 Network address required to calculate link IPs for layer3 fabric.
         pn_cidr_ipv4: "24"                              # Ipv4 Subnet mask required to calculate link IPs for layer3 fabric.
-        pn_if_nat_realm: 'internal'                      # Type of if_nat_realm. choices=['internal', 'external'], default='internal' 
+        pn_if_nat_realm: 'internal'                     # Type of if_nat_realm. choices=['internal', 'external'], default='internal' 
         pn_supernet_ipv4: "31"                          # Ipv4 Supernet mask required to calculate link IPs for layer3 fabric.
-        pn_net_address_ipv6: '2620:0000:167F:b001::40' # Ipv6 Network address required to calculate link IPs for layer3 fabric.
-        pn_cidr_ipv6: "112"                              # ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
+        pn_net_address_ipv6: '2620:0000:167F:b001::40'  # Ipv6 Network address required to calculate link IPs for layer3 fabric.
+        pn_cidr_ipv6: "112"                             # ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet_ipv6: "126"                         # Ipv6 Supernet mask required to calculate link IPs for layer3 fabric.
         pn_bfd: True                          		# Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
         pn_bfd_min_rx: 200           			# BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
@@ -223,11 +218,10 @@
 
 
 # This task is to configure OSPF.
-# It uses pn_bgp_ospf.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# It uses pn_ztp_bgp_ospf.py module from library/ directory.
 - name: Configure OSPF
   hosts: all
-  tags: ospf
+  tags: iospf-leaf
 
   vars_files:
   - cli_vault.yml
@@ -242,7 +236,7 @@
         pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
         pn_ospf_area_id: "0"           			   # Area id to configure for ospf. Default: 0
         pn_iospf_ip_range: "104.255.61.92"       	   # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
-        pn_subnet_ipv4: "23"                              # subnet count for iosof ip range
+        pn_subnet_ipv4: "23"                               # subnet count for iosof ip range
         pn_super_net_ipv4: "31"
         pn_iospf_vlan: "4040"                  		   # Vlan for creating the interfaces between leaf clusters. Default:'4040'
         pn_addr_type: 'ipv4_ipv6'                          # The type of address scheme to be used. Options: ipv4/dual_stack.
@@ -261,7 +255,6 @@
 
 # This task is to create vrouter interface.
 # It uses pn_vrouter_iface.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: vrouter interface modules
   hosts: spine[0]
   tags: spine-svi
@@ -272,11 +265,11 @@
   tasks:
     - name: Add a vrouter interface
       pn_vrouter_iface:
-        pn_action: "add"                                #vRouter interface command - add/remove/modify.
-        pn_vrouter: "hmplabpsq-we60100-vrouter"            #Name of the vrouter.
-        pn_vlan: "490"                                  #Interface vlan.
-        pn_interface_ip: "10.9.9.1/24"                     #IP address for the interface in x.x.x.x/n format.
-        pn_mtu: "9216"                                    #Interface MTU.
+        pn_action: "add"                                # vRouter interface command - add/remove/modify.
+        pn_vrouter: "hmplabpsq-we60100-vrouter"         # Name of the vrouter.
+        pn_vlan: "490"                                  # Interface vlan.
+        pn_interface_ip: "10.9.9.1/24"                  # IP address for the interface in x.x.x.x/n format.
+        pn_mtu: "9216"                                  # Interface MTU.
       register: output
     - debug:
         var: output
@@ -284,7 +277,6 @@
 
 # This task is to create vrouter interface.
 # It uses pn_vrouter_iface.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: vrouter interface  modules
   hosts: spine[1]
   tags: spine-svi
@@ -295,11 +287,11 @@
   tasks:
     - name: Add a vrouter interface
       pn_vrouter_iface:
-        pn_action: "add"                          #vRouter interface command - add/remove/modify.
-        pn_vrouter: "hmplabpsq-we60200-vrouter"   #Name of the vrouter.
-        pn_vlan: "490"                            #Interface vlan.
-        pn_interface_ip: "10.9.10.1/24"           #IP address for the interface in x.x.x.x/n format.
-        pn_mtu: "9216"                            #Interface MTU.
+        pn_action: "add"                               # vRouter interface command - add/remove/modify.
+        pn_vrouter: "hmplabpsq-we60200-vrouter"        # Name of the vrouter.
+        pn_vlan: "490"                                 # Interface vlan.
+        pn_interface_ip: "10.9.10.1/24"                # IP address for the interface in x.x.x.x/n format.
+        pn_mtu: "9216"                                 # Interface MTU.
       register: output
     - debug:
         var: output
@@ -307,7 +299,6 @@
 
 # This task is to modify vrouter pim config
 # It uses pn_vrouter_pim_config module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: vrouter pim config module
   hosts: spine, leaf
   tags: vrouter-pim-config
@@ -326,7 +317,6 @@
 
 # This task is to create VLAN.
 # It uses pn_vlan.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: VLAN Configuration
   tags: inband-vlan
@@ -338,11 +328,11 @@
   tasks:
     - name: VLAN Configuration
       pn_vlan:
-        pn_action: 'create'                             #The VLAN action to perform on the switches.
-        pn_vlanid: '610'                                #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-        pn_scope: 'local'                               #Scope for VLAN - fabric/local/cluster.
-        pn_description: 'inbandMGMT'                    #VLAN description.
-        pn_vxlan: 6100                                  #VXLAN tunnel mapped to VLAN.
+        pn_action: 'create'                             # The VLAN action to perform on the switches.
+        pn_vlanid: '610'                                # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'local'                               # Scope for VLAN - fabric/local/cluster.
+        pn_description: 'inbandMGMT'                    # VLAN description.
+        pn_vxlan: 6100                                  # VXLAN tunnel mapped to VLAN.
       register: output
     - debug:
         var: output
@@ -350,9 +340,8 @@
 
 # This task is to modify fabric to local scope.
 # It uses pn_fabric_local.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: fabric local module
-  hosts: spine, leaf
+  hosts: spine[0]
   tags: fabric-local
 
   vars_files:
@@ -371,7 +360,6 @@
 
 # This task is to create VLAN.
 # It uses pn_vlan.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: VLAN Configuration
   tags: overlay-vlan-241
   hosts: spine[0]
@@ -382,10 +370,10 @@
   tasks:
     - name: VLAN Configuration
       pn_vlan:
-        pn_action: 'create'                              #The VLAN action to perform on the switches.
-        pn_vlanid: '241'                                 #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-        pn_scope: 'fabric'                               #Scope for VLAN - fabric/local/cluster.
-        pn_vxlan: 2410                                   #VXLAN tunnel mapped to VLAN.
+        pn_action: 'create'                              # The VLAN action to perform on the switches.
+        pn_vlanid: '241'                                 # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                               # Scope for VLAN - fabric/local/cluster.
+        pn_vxlan: 2410                                   # VXLAN tunnel mapped to VLAN.
       register: output
     - debug:
         var: output
@@ -393,7 +381,6 @@
 
 # This task is to create VLAN.
 # It uses pn_vlan.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: VLAN Configuration
   tags: overlay-vlan-242
   hosts: spine[0]
@@ -404,10 +391,10 @@
   tasks:
     - name: VLAN Configuration
       pn_vlan:
-        pn_action: 'create'                              #The VLAN action to perform on the switches.
-        pn_vlanid: '242'                           #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-        pn_scope: 'fabric'                             #Scope for VLAN - fabric/local/cluster.
-        pn_vxlan: '2420'                                  #VXLAN tunnel mapped to VLAN.
+        pn_action: 'create'                              # The VLAN action to perform on the switches.
+        pn_vlanid: '242'                                 # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                               # Scope for VLAN - fabric/local/cluster.
+        pn_vxlan: '2420'                                 # VXLAN tunnel mapped to VLAN.
       register: output
     - debug:
         var: output
@@ -415,7 +402,6 @@
 
 # This task is to create VLAN.
 # It uses pn_vlan.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 - name: VLAN Configuration
   tags: overlay-vlan-243
   hosts: spine[0]
@@ -426,10 +412,10 @@
   tasks:
     - name: VLAN Configuration
       pn_vlan:
-        pn_action: 'create'                              #The VLAN action to perform on the switches.
-        pn_vlanid: '243'                           #VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-        pn_scope: 'fabric'                             #Scope for VLAN - fabric/local/cluster.
-        pn_vxlan: '2430'                                  #VXLAN tunnel mapped to VLAN.
+        pn_action: 'create'                              # The VLAN action to perform on the switches.
+        pn_vlanid: '243'                                 # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                               # Scope for VLAN - fabric/local/cluster.
+        pn_vxlan: '2430'                                 # VXLAN tunnel mapped to VLAN.
       register: output
     - debug:
         var: output
@@ -437,7 +423,6 @@
 
 # This task is to configure VXLAN full mesh.
 # It uses pn_ztp_vxlan.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 
 - name: ZTP VXLAN configuration
@@ -467,7 +452,6 @@
 
 # This task is to add loopback ip to bgp network.
 # It uses pn_vrouter_bgp_network.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 #- name: vrouter bgp network module
 #  hosts: leaf[0]
 #  tags: BGP_NETWORK_ADD
@@ -499,11 +483,86 @@
 #        var: output
 
 
+# This task is to modify admin service.
+# It uses pn_admin_service.py module from library/ directory.
+- name: admin service module
+  hosts: spine, leaf
+  tags: admin-service
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: admin service functionality
+      pn_admin_service:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        action: "modify"                                # admin service configuration command:modify.
+        pn_web: False                                   # Specify web type True/False.
+        pn__if: "mgmt"                                  # Specify type of network
+        pn_web_ssl: False                               # Specify web ssl type True/False.
+        pn_snmp: True                                   # Specify snmp type True/False.
+        pn_net_api: True                                # Specify net api type True/False.
+        pn_icmp: True                                   # Specify icmp type True/False.
+        pn_ssh: True                                    # Specify ssh type True/False.
+        pn_nfs: True                                    # Specify nfs type True/False.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to modify admin service.
+# It uses pn_admin_service.py module from library/ directory.
+- name: admin service module
+  hosts: spine, leaf
+  tags: admin-service
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: admin service functionality
+      pn_admin_service:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        action: "modify"                                # admin service configuration command:modify.
+        pn_web: False                                   # Specify web type True/False.
+        pn__if: "data"                                  # Specify type of network
+        pn_web_ssl: False                               # Specify web ssl type True/False.
+        pn_snmp: True                                   # Specify snmp type True/False.
+        pn_net_api: True                                # Specify net api type True/False.
+        pn_icmp: True                                   # Specify icmp type True/False.
+        pn_ssh: True                                    # Specify ssh type True/False.
+        pn_nfs: True                                    # Specify nfs type True/False.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to modify admin session timout.
+# It uses pn_admin_session_timeout.py module from library/ directory.
+- name: admin session timeout
+  hosts: spine, leaf
+  tags: admin-session-timeout
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: admin session timeout functionality
+      pn_admin_session_timeout:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        action: "modify"                                # admin session timeout configuration choice=modify.
+
+        pn_timeout: '3600s'                             # Specify duration of timeout of admin session
+      register: output
+    - debug:
+        var: output
+
+
 # This task is to create snmp user.
 # It uses pn_snmp_user.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# create/delete/modify for SNMPv3 users.
 - name: snmp user module
-  hosts: leaf[0]
+  hosts: spine, leaf
   tags: snmp-user
 
   vars_files:
@@ -512,13 +571,38 @@
   tasks:
     - name: snmp-user functionality
       pn_snmp_user:
-        pn_cliswitch: "hmplabpsq-we60100"                  #Target switch to run the CLI on.
-        pn_action: "create"                             #snmp-user configuration command: create/delete.
-        pn_user_name: "VINETro"                   
-        pn_auth: True
-        pn_priv: True
-        pn_auth_pass: 'baseball'
-        pn_priv_pass: 'baseball'
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                             # snmp-user configuration command: create/delete.
+        pn_user_name: "VINETro"                         # snmp user name.      
+        pn_auth: True                                   # snmp authentication required.
+        pn_priv: True                                   # snmp privileges.
+        pn_auth_pass: 'baseball'                        # snmp authentication password.
+        pn_priv_pass: 'baseball'                        # snmp privilege password
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create snmp user.
+# It uses pn_snmp_user.py module from library/ directory.
+# create/delete/modify for SNMPv3 users.
+- name: snmp user module
+  hosts: spine, leaf
+  tags: snmp-user
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp-user functionality
+      pn_snmp_user:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                             # snmp-user configuration command: create/delete.
+        pn_user_name: "VINETrw"                         # snmp user name.      
+        pn_auth: True                                   # snmp authentication required.
+        pn_priv: True                                   # snmp privileges.
+        pn_auth_pass: 'baseball'                        # snmp authentication password.
+        pn_priv_pass: 'baseball'                        # snmp privilege password
       register: output
     - debug:
         var: output
@@ -526,9 +610,9 @@
 
 # This task is to create snmp community.
 # It uses pn_snmp_community.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# create/delete/modify for SNMP communities for SNMPv1
 - name: snmp community module
-  hosts: spine[0]
+  hosts: spine, leaf
   tags: snmp-community
 
   vars_files:
@@ -537,9 +621,10 @@
   tasks:
     - name: snmp-community functionality
       pn_snmp_community:
-        pn_action: "create"                             #snmp-community configuration command: create/delete/modify.
-        pn_community_string: "football"                       
-        pn_community_type: "read-write"                       
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                             # snmp-community configuration command: create/delete/modify.
+        pn_community_string: "football"                 # snmp-communtiy string name.
+        pn_community_type: "read-write"                 # snmp-communtiy string type. choices=['read-only', 'read-write']
       register: output
     - debug:
         var: output
@@ -547,9 +632,102 @@
 
     - name: snmp-community functionality
       pn_snmp_community:
-        pn_action: "create"                             #snmp-community configuration command: create/delete/modify.
-        pn_community_string: "baseball"
-        pn_community_type: "read-only"
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                             # snmp-community configuration command: create/delete/modify.
+        pn_community_string: "baseball"                 # snmp-communtiy string name.
+        pn_community_type: "read-only"                  # snmp-communtiy string type. choices=['read-only', 'read-write']
       register: output
     - debug:
         var: output
+
+
+
+# This task is to create/modify snmp vacm.
+# It uses pn_snmp_vacm.py module from library/ directory.
+- name: snmp vacm module
+  hosts: spine, leaf
+  tags: snmp-vcam
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp vacm functionality
+      pn_snmp_vacm:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        action: "create"                                # snmp vacm configuration command: create/delete/modify.
+        pn_user_name: "VINETro"                         # Specify the name of the snmp vacm.
+        pn_auth: True                                   # snmp authentication required.
+        pn_priv: True                                   # snmp privileges.
+        pn_user_type: "rouser"                          # Specify snmp vacm user type. choices=choices=['rouser', 'rwuser']
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/modify snmp vacm.
+# It uses pn_snmp_vacm.py module from library/ directory.
+- name: snmp vacm module
+  hosts: spine, leaf
+  tags: snmp-vcam
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp vacm functionality
+      pn_snmp_vacm:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        action: "create"                                # snmp vacm configuration command: create/delete/modify.
+        pn_user_name: "VINETrw"                         # Specify the name of the snmp vacm.
+        pn_auth: True                                   # snmp authentication required.
+        pn_priv: True                                   # snmp privileges.
+        pn_user_type: "rwuser"                          # Specify snmp vacm user type. choices=choices=['rouser', 'rwuser']
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/modify role.
+# It uses pn_role.py module from library/ directory.
+- name: role configuration
+  hosts: spine, leaf
+  tags: role
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: role functionality
+      pn_role:
+        pn_cliswitch: "{{ inventory_hostname }}"      # Name of the switch on which this task is currently getting executed.
+        action: "create"                              # Specify the action of role. choices=['create', 'modify', 'delete']
+        pn_name: "abcd"                               # Specify the name of the role.
+        pn_scope: "local"                             # Specify the scope of the role. choices=choices=['local', 'fabric']
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/modify admin syslog.
+# It uses pn_admin_syslog.py module from library/ directory.
+- name: admin syslog module
+  hosts: spine, leaf
+  tags: admin-syslog
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: admin-syslog functionality
+      pn_admin_syslog:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                             # admin-syslog configuration command: create/delete/modify.
+        pn_name: "vzsyslog"                             # Specify the name of the admin-syslog.
+        pn_scope: "fabric"                              # Specify the name of the scope. local/fabric
+        pn_host: "146.13.191.77"                        # Specify host ip.
+        pn_message_format: 'structured'                 # structured/legacy
+      register: output
+    - debug:
+        var: output
+

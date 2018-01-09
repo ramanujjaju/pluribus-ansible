@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI EBGP/OSPF """
+""" PN CLI BGP/OSPF """
 
 #
 # This file is part of Ansible
@@ -21,7 +21,7 @@
 import shlex
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.pn_nvos import pn_cli
+from ansible.module_utils.pn_nvos import *
 
 DOCUMENTATION = """
 ---

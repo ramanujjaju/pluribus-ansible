@@ -21,7 +21,7 @@
 import shlex
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.pn_nvos import pn_cli
+from ansible.module_utils.pn_nvos import *
 
 DOCUMENTATION = """
 ---
@@ -463,18 +463,6 @@ def configure_vrrp(module, csv_data):
                         module, vlan_id, vrrp_ip, vrrp_ipv6, leaf_switch_1)
 
     return output
-
-
-def get_global_vnet_name(module):
-    """
-    Method to get global vnet name, required for vrouters creation.
-    :param module: The Ansible module to fetch input parameters.
-    :return: Global vnet name.
-    """
-    cli = pn_cli(module)
-    cli += ' fabric-node-show format fab-name no-show-headers '
-    fabric_name = list(set(run_cli(module, cli).split()))[0]
-    return str(fabric_name) + '-global'
 
 
 def main():

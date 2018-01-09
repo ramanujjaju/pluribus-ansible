@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI snmp-community-create/snmp-community-delete/snmp-community-modify """
+""" PN CLI snmp-vacm-create/modify/delete """
 #
 # This file is part of Ansible
 #
@@ -23,48 +23,67 @@ from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
-module: pn_snmp_communtiy
+module: pn_snmp_vacm
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 2
-short_description: CLI command to create snmp community.
+short_description: CLI command to create/modify/delete snmp-vacm.
 description:
-  - SNMP community configuration.
+  - C(create): create View Access Control Models (VACM)
+  - C(modify): modify View Access Control Models (VACM)
+  - C(delete): delete View Access Control Models (VACM)
 options:
   pn_cliswitch:
     description:
       - Target switch to run the CLI on.
     required: False
     type: str
-  pn_action:
+  action:
     description:
-      - snmp-community command.
+      - snmp-vacm configuration command.
     required: true
+    choices: ['create', 'modify', 'delete']
     type: str
-  pn_community_string:
+  pn_oid_restrict:
     description:
-      - snmp-communtiy string name
+      - restrict OID
     required: false
     type: str
-  pn_communtiy_type:
+  pn_priv:
     description:
-      - snmp-communtiy string type
+      - privileges
+    required: false
+    type: bool
+  pn_auth:
+    description:
+      - authentication required
+    required: false
+    type: bool
+  pn_user_type:
+    description:
+      - SNMP user type
+    required: false
+    choices: ['rouser', 'rwuser']
+  pn_user_name:
+    description:
+      - SNMP administrator name
     required: false
     type: str
-    choices=['read-only', 'read-write']
 """
 
 EXAMPLES = """
-- name: snmp-community functionality
-  pn_snmp_community:
-    pn_action: "create"
-    pn_community_string: "football"      
-    pn_community_type: "read-write"
-""" 
+- name: snmp vacm functionality
+  pn_snmp_vacm:
+    action: "create"
+    pn_user_name: "VINETrw"
+    pn_auth: True
+    pn_priv: True
+    pn_user_type: "rwuser"
+"""
 
 RETURN = """
 command:
   description: the CLI command run on the target node.
-stdout: 
+stdout:
   description: set of responses from the snmp-vacm command.
   returned: always
   type: list
@@ -86,7 +105,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['pn_action']
+    action = module.params['action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -95,7 +114,7 @@ def run_cli(module, cli):
         module.fail_json(
             command=' '.join(cli),
             stderr=err.strip(),
-            msg="snmp-community %s operation failed" % action,
+            msg="snmp-vacm %s operation failed" % action,
             changed=False
         )
 
@@ -103,28 +122,16 @@ def run_cli(module, cli):
         module.exit_json(
             command=' '.join(cli),
             stdout=out.strip(),
-            msg="snmp-community %s operation completed" % action,
+            msg="snmp-vacm %s operation completed" % action,
             changed=True
         )
 
     else:
         module.exit_json(
             command=' '.join(cli),
-            msg="snmp-community %s operation completed" % action,
+            msg="snmp-vacm %s operation completed" % action,
             changed=True
         )
-
-
-def check_community(module, community_string):
-    """
-    This method cchecks for snmp community.
-    :param module: The Ansible module to fetch command
-    :param community_string: the str name of communtiy string.
-    """
-    cli = pn_cli(module, module.params['pn_cliswitch'])
-    cli += ' snmp-community-show community-string ' + community_string
-    cli = shlex.split(cli)
-    return module.run_command(cli)[1]
 
 
 def main():
@@ -132,42 +139,50 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str',
-                           choices=['create', 'delete', 'modify']),
-            pn_community_string=dict(required=True, type='str'),
-            pn_community_type=dict(required=False, type='str',
-                                   choices=['read-only', 'read-write']),
+            action=dict(required=True, type='str',
+                        choices=['create', 'modify', 'delete']),
+            pn_oid_restrict=dict(required=False, type='str'),
+            pn_priv=dict(required=False, type='bool'),
+            pn_auth=dict(required=False, type='bool'),
+            pn_user_type=dict(required=False, type='str',
+                              choices=['rouser', 'rwuser']),
+            pn_user_name=dict(required=False, type='str'),
         )
     )
 
-    community_string = module.params['pn_community_string']
-    action = module.params['pn_action']
-    community_type = module.params['pn_community_type']
+    # Accessing the arguments
+    switch = module.params['pn_cliswitch']
+    mod_action = module.params['action']
+    oid_restrict = module.params['pn_oid_restrict']
+    priv = module.params['pn_priv']
+    auth = module.params['pn_auth']
+    user_type = module.params['pn_user_type']
+    user_name = module.params['pn_user_name']
 
-    if action == 'create':
-        if check_community(module, community_string):
-            module.exit_json(
-                msg='snmp-community with name %s \
-                     already present in the switch' % community_string
-            )
-    elif action == 'modify' or action == 'delete':
-        if not check_community(module, community_string):
-            module.fail_json(
-                msg='snmp-community with name %s \
-                      not present in the switch' % community_string
-            )
-    else:
-        module.fail_json(
-            msg='snmp-community action %s not supported \
-                 Use create/delete/modify' % action
-        )
-    cli = pn_cli(module, module.params['pn_cliswitch'])
-    cli += ' snmp-community-'+ action + ' community-string ' + community_string
-    if community_type and action != 'delete':
-        cli += ' community-type ' + community_type
+    # Building the CLI command string
+    cli = pn_cli(module, switch)
+    cli += ' snmp-vacm-' + mod_action
+    if mod_action in ['create', 'modify']:
+        if oid_restrict:
+            cli += ' oid-restrict ' + oid_restrict
+        if priv:
+            if priv is True:
+                cli += ' priv '
+            else:
+                cli += ' no-priv '
+        if auth:
+            if auth is True:
+                cli += ' auth '
+            else:
+                cli += ' no-auth '
+        if user_type:
+            cli += ' user-type ' + user_type
+
+    if mod_action in ['create', 'delete', 'modify']:
+        if user_name:
+            cli += ' user-name ' + user_name
 
     run_cli(module, cli)
 
 if __name__ == '__main__':
     main()
-

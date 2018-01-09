@@ -20,6 +20,87 @@
 import shlex
 from ansible.module_utils.basic import AnsibleModule
 
+DOCUMENTATION = """
+---
+module: pn_snmp_user
+author: "Pluribus Networks (devops@pluribusnetworks.com)"
+version: 2
+short_description: CLI command to create/modify/delete snmp-user.
+description:
+  - C(create): create View Access Control Models (VACM)
+  - C(modify): modify View Access Control Models (VACM)
+  - C(delete): delete View Access Control Models (VACM)
+options:
+  pn_cliswitch:
+    description:
+      - Target switch to run the CLI on.
+    required: False
+    type: str
+  action:
+    description:
+      - snmp-user configuration command.
+    required: true
+    choices: ['create', 'modify', 'delete']
+    type: str
+  pn_priv:
+    description:
+      - privileges
+    required: false
+    type: bool
+  pn_auth:
+    description:
+      - authentication required
+    required: false
+    type: bool
+  pn_user_type:
+    description:
+      - SNMP user type
+    required: false
+    choices: ['rouser', 'rwuser']
+  pn_user_name:
+    description:
+      - SNMP administrator name
+    required: false
+    type: str
+  pn_auth_pass:
+    description:
+      - snmp authentication password
+    required: False
+    type: str
+  pn_priv_pass:
+    description:
+      - snmp privilege password
+    required: False
+    type: str
+"""
+
+EXAMPLES = """
+- name: snmp-user functionality
+  pn_snmp_user:
+    pn_action: "create"
+    pn_user_name: "VINETrw"      
+    pn_auth: True
+    pn_priv: True
+    pn_auth_pass: 'baseball'
+    pn_priv_pass: 'baseball'
+"""
+
+RETURN = """
+command:
+  description: the CLI command run on the target node.
+stdout:
+  description: set of responses from the snmp-user command.
+  returned: always
+  type: list
+stderr:
+  description: set of error responses from the snmp-user command.
+  returned: on error
+  type: list
+changed:
+  description: indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
+"""
 
 def pn_cli(module):
     """
@@ -115,13 +196,13 @@ def main():
 
     if action == 'create':
         if check_user(module, user_name):
-            module.fail_json(
+            module.exit_json(
                 msg='snmp-user with name %s \
                      already present in the switch' % user_name
             )
     elif action == 'delete' or action == 'modify':
         if not check_user(module, user_name):
-            module.exit_json(
+            module.fail_json(
                 msg='snmp-user with name %s \
                      not present in the switch' % user_name
             )

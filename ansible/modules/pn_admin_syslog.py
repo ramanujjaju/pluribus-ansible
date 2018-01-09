@@ -19,30 +19,104 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
+DOCUMENTATION = """
+---
+module: pn_admin_syslog.py
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
+short_description: Module to create/delete/modify admin syslog.
+description:
+    It performs following steps:
+        - creates/deletes/modifies admin syslogs.
+options:
+  pn_cliswitch:
+    description:
+      - Target switch to run the CLI on.
+    required: False
+    type: str
+    pn_action:
+      description:
+        - Action required on admin syslog.
+      required: True
+      type: str
+      choice: ['create', 'delete', 'modify']
+    pn_name:
+      description:
+        - Specify the name of admin syslog.
+      required: True
+      type: str
+    pn_scope:
+      description:
+        - Specify the scope of admin syslog.
+      required: False
+      type: str
+      choice: ['local', 'fabric']
+    pn_host:
+      description:
+        - Specify the host ip of admin syslog.
+      required: False
+      type: str
+    pn_port:
+      description:
+        - Specify the port of admin syslog.
+      required: False
+      type: str
+    pn_transport:
+      description:
+        - Specify the transport of admin syslog.
+      required: False
+      type: str
+      choice: ['tcp-tls', 'udp']
+    pn_message_format:
+      description:
+        - Specify the message format of admin syslog.
+      required: False
+      type: str
+      choice: ['structured', 'legacy']
+"""
 
-    cli = '/usr/bin/cli --quiet '
+EXAMPLES = """
+- name: admin-syslog functionality
+  pn_admin_syslog:
+   pn_action: "create"
+   pn_name: "vzsyslog"
+   pn_scope: "fabric"
+   pn_host: "146.13.191.77"
+   pn_message_format: 'structured'
+"""
 
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    cli += ' admin-syslog-'
-
-    return cli
+RETURN = """
+summary:
+  description: It contains output of each configuration along with switch name.
+  returned: always
+  type: str
+changed:
+  description: Indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
+failed:
+  description: Indicates whether or not the execution failed on the target.
+  returned: always
+  type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
+"""
 
 
 def run_cli(module, cli):
@@ -81,9 +155,16 @@ def run_cli(module, cli):
         )
 
 
-def check_community(module, name):
-    cli = pn_cli(module)
-    cli += 'show name ' + name
+def check_admin_syslog(module, name):
+    """
+    Method to chaeck admin syslog name.
+    :param module: The Ansible module to fetch input parameters.
+    :param name: name of syslog.
+    :return: The output of run_cli() method.
+    """
+
+    cli = pn_cli(module, module.params['pn_cliswitch'])
+    cli += ' admin-syslog-show name ' + name
     cli = shlex.split(cli)
     return module.run_command(cli)[1]
 
@@ -92,19 +173,22 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str', choices=['create', 'delete', 'modify']),
+            pn_action=dict(required=True, type='str',
+                           choices=['create', 'delete', 'modify']),
             pn_name=dict(required=True, type='str'),
-            pn_scope=dict(required=False, type='str', choices=['local', 'fabric']),
+            pn_scope=dict(required=False, type='str',
+                          choices=['local', 'fabric']),
             pn_host=dict(required=False, type='str'),
             pn_port=dict(required=False, type='str'),
-            pn_transport=dict(required=False, type='str', choices=['tcp-tls', 'udp']),
-            pn_message_format=dict(required=False, type='str', choices=['structured', 'legacy']),
+            pn_transport=dict(required=False, type='str',
+                              choices=['tcp-tls', 'udp']),
+            pn_message_format=dict(required=False, type='str',
+                                   choices=['structured', 'legacy']),
         )
     )
 
+    switch = module.params['pn_cliswitch']
     name = module.params['pn_name']
     action = module.params['pn_action']
     scope = module.params['pn_scope']
@@ -114,22 +198,25 @@ def main():
     message_format = module.params['pn_message_format']
 
     if action == 'create':
-        if check_community(module, name):
-            module.fail_json(
-                msg='admin-syslog with name %s already present in the switch' % name
+        if check_admin_syslog(module, name):
+            module.exit_json(
+                msg='admin-syslog with name %s \
+                     already present in the switch' % name
             )
     elif action == 'modify' or action == 'delete':
-        if not check_community(module, name):
+        if not check_admin_syslog(module, name):
             module.fail_json(
-                msg='admin-syslog with name %s not present in the switch' % name
+                msg='admin-syslog with name %s \
+                     not present in the switch' % name
             )
     else:
         module.fail_json(
-            msg='admin-syslog action %s not supported. Use create/delete/modify' % action
+            msg='admin-syslog action %s not supported. \
+                 Use create/delete/modify' % action
         )
 
-    cli = pn_cli(module)
-    cli += action + ' name ' + name
+    cli = pn_cli(module, switch)
+    cli += ' admin-syslog-' + action + ' name ' + name
     if action != 'delete':
         if scope:
             cli += ' scope ' + scope
