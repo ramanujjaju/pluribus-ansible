@@ -910,7 +910,7 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
 
     cli = clicopy
     cli += ' vrouter-ospf-show'
-    cli += ' network %s format switch no-show-headers ' % ospf_network
+    cli += ' network %s format switch no-show-headers ' % interface_ip
     already_added = run_cli(module, cli).split()
 
     if vrouter in already_added:
@@ -922,11 +922,11 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
                                          interface_ip_without_supernet)
         cli = clicopy
         cli += ' vrouter-ospf-add vrouter-name ' + vrouter
-        cli += ' network %s ospf-area %s' % (ospf_network, ospf_area_id)
+        cli += ' network %s ospf-area %s' % (interface_ip, ospf_area_id)
 
         if 'Success' in run_cli(module, cli):
             output += ' %s: Added OSPF neighbor %s to %s \n' % (
-                switch_name, ospf_network, vrouter
+                switch_name, interface_ip, vrouter
             )
             CHANGED_FLAG.append(True)
 
@@ -946,6 +946,7 @@ def assign_leafcluster_ospf_interface(module):
     leaf_list = module.params['pn_leaf_list']
     subnet_count = int(module.params['pn_subnet_ipv4'])
     supernet = module.params['pn_super_net_ipv4']
+    count = 1
 
     cli = pn_cli(module)
     clicopy = cli
@@ -953,6 +954,7 @@ def assign_leafcluster_ospf_interface(module):
     address = iospf_ip_range.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
     static_part += str(address[2]) + '.'
+    base_addr = int(address[3])
 
     cli += ' cluster-show format name no-show-headers '
     cluster_list = run_cli(module, cli).split()
@@ -970,7 +972,7 @@ def assign_leafcluster_ospf_interface(module):
             cluster_node_1, cluster_ports_1, cluster_node_2, cluster_ports_2 = run_cli(module, cli).split()
 
             if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
-                ip_count = subnet_count * 4
+                ip_count = base_addr + count
                 ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
                 ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
                 ospf_network = static_part + str(ip_count) + '/' + str(supernet)
@@ -982,7 +984,7 @@ def assign_leafcluster_ospf_interface(module):
                                                        ip2, ospf_network,
                                                        ospf_area_id, cluster_ports_2)
 
-                subnet_count += 1
+                count += 4
     else:
         output += ' No leaf clusters present to add iOSPF \n'
 

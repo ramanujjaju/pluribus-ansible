@@ -243,7 +243,7 @@ def add_vxlan_loopback_trunk_ports(module, ports, switch):
     output = ''
     cli = pn_cli(module)
 
-    cli += 'switch %s ' % switch
+    cli += ' switch %s ' % switch
     cli += ' trunk-modify name vxlan-loopback-trunk ports %s' % ports
     out = run_cli(module, cli)
     if out:
@@ -407,14 +407,13 @@ def main():
     all_nodes, output = create_tunnel(module, all_nodes, cluster_pair)
     output1 += output
 
-    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
-
-    for switch in switch_list:
+    for switch in module.params['pn_spine_list'] + module.params['pn_leaf_list']:
         if ports:
             output1 += add_vxlan_loopback_trunk_ports(module, ports, switch)
 
     message_string = output1
     results = []
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
     for switch in switch_list:
         replace_string = switch + ': '
 

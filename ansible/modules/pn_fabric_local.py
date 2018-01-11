@@ -30,11 +30,6 @@ short_description: CLI command to modify fabric-local.
 description:
   - C(modify): modify fabric local information
 options:
-  pn_cliswitch:
-    description:
-      - Target switch to run the CLI on.
-    required: False
-    type: str
   action:
     description:
       - fabric-local configuration command.
@@ -66,7 +61,7 @@ options:
 EXAMPLES = """
 - name: Fabric local module
   pn_fabric_local:
-    pn_cliswitch: "{{ inventory_hostname }}"
+    pn_current_switch: "{{ inventory_hostname }}"
     action: "modify"
     pn_vlan: "610"
 """
@@ -133,7 +128,6 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_current_switch=dict(required=True, type='str'),
-            pn_cliswitch=dict(required=False, type='str'),
             action=dict(required=True, type='str', choices=['modify']),
             pn_fabric_network=dict(required=False, type='str',
                                    choices=['mgmt', 'in-band']),
@@ -154,7 +148,7 @@ def main():
     fabric_adv_network = module.params['pn_fabric_advertisement_network']
 
     # Building the CLI command string
-    cli = pn_cli(module, module.params['pn_current_switch'])
+    cli = pn_cli(module)
     cli += ' fabric-local-' + mod_action
     if mod_action in ['modify']:
         if fabric_network:

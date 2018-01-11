@@ -19,6 +19,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 
 DOCUMENTATION = """
@@ -33,21 +34,6 @@ description:
   - You can configure interfaces to vRouter services on a fabric, cluster,
     standalone switch or virtual network(VNET).
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
-  pn_cliswitch:
-    description:
-      - Target switch to run the cli on.
-    required: False
-    type: str
   pn_action:
     description:
       - vRouter interface command.
@@ -200,23 +186,6 @@ NIC_EXISTS = None
 VRRP_EXISTS = None
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    cliswitch = module.params['pn_cliswitch']
-
-    cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def check_cli(module):
     """
     This method checks if vRouter exists on the target node.
@@ -240,11 +209,6 @@ def check_cli(module):
     show_cli = pn_cli(module)
     # Global flags
     global VROUTER_EXISTS, INTERFACE_EXISTS, NIC_EXISTS
-
-    cliswitch = module.params['pn_cliswitch']
-    if cliswitch:
-        show_cli = show_cli.replace('switch ', '')
-        show_cli = show_cli.replace(cliswitch, '')
 
     # Check for vRouter
     check_vrouter = show_cli + ' vrouter-show format name no-show-headers '
@@ -286,11 +250,6 @@ def get_nic(module):
     show_cli = pn_cli(module)
 
     global VRRP_EXISTS
-
-    cliswitch = module.params['pn_cliswitch']
-    if cliswitch:
-        show_cli = show_cli.replace('switch ', '')
-        show_cli = show_cli.replace(cliswitch, '')
 
     # Check for interface and VRRP and fetch nic for VRRP
     show = show_cli + ' vrouter-interface-show vrouter-name %s ' % vrouter
@@ -351,7 +310,6 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['add', 'remove', 'modify']),
             pn_vrouter=dict(required=True, type='str'),

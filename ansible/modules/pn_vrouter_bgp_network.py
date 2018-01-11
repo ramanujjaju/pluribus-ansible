@@ -19,6 +19,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -30,21 +31,6 @@ description:
   - C(add): add Border Gateway Protocol network to a vRouter
   - C(remove): remove Border Gateway Protocol network from a vRouter
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
-  pn_cliswitch:
-    description:
-      - Target switch to run the CLI on.
-    required: False
-    type: str
   action:
     description:
       - vrouter-bgp-network configuration command.
@@ -71,8 +57,6 @@ options:
 EXAMPLES = """
 - name: vrouter bgp network module
   pn_vrouter_bgp_network:
-    pn_cliusername: "{{ ansible_user }}"
-    pn_clipassword: "{{ ansible_ssh_pass }}"
     pn_vrouter_name: "hmplabpsq-we50100-vrouter"
     pn_network: "104.255.61.1"
     pn_netmask: "32"
@@ -97,28 +81,6 @@ changed:
 """
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    cli = '/usr/bin/cli --quiet -e '
-
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def run_cli(module, cli):
     """
     This method executes the cli command on the target node(s) and returns the
@@ -132,7 +94,7 @@ def run_cli(module, cli):
 
     # Response in JSON format
     if err:
-        module.fail_json(
+        module.exit_json(
             command=' '.join(cli),
             stderr=err.strip(),
             msg="vrouter-bgp-network %s operation failed" % action,
@@ -159,9 +121,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
             action=dict(required=True, type='str', choices=['add', 'remove']),
             pn_netmask=dict(required=False, type='str'),
             pn_network=dict(required=False, type='str'),

@@ -111,7 +111,7 @@ def run_cli(module, cli):
 
     # Response in JSON format
     if err:
-        module.fail_json(
+        module.exit_json(
             command=' '.join(cli),
             stderr=err.strip(),
             msg="snmp-vacm %s operation failed" % action,

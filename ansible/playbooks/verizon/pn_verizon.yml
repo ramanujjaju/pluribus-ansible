@@ -49,6 +49,7 @@
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
         pn_inband_ipv4: '104.255.65.40/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
         pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
+#        pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
         pn_static_setup: 'false'                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
@@ -60,7 +61,7 @@
 #        pn_domain_name: 'HEMPLAB.VERIZON.COM'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
 #        pn_ntp_server: '0.us.pool.ntp.org'             # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
-        pn_stp: False                                  # Specify True if you want to enable STP at the end. Default: False.
+        pn_stp: True                                   # Specify True if you want to enable STP at the end. Default: False.
       register: ztp_out                                # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true                    # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
@@ -100,7 +101,7 @@
 # It uses pn_ztp_vrouter_setup.py module from library/ directory.
 # If the tasks fails then it will retry as specified by retries count.
 - name: Configure vrouter
-  hosts: leaf[0:3]
+  hosts: leaf
   tags: vrouter-leaf
 
   vars_files:
@@ -117,32 +118,26 @@
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_pim_ssm: True                                # Variable to specify pim_ssm for ospf
         pn_ospf_redistribute: 'static' 
+      register: vrouter_leaf                            # Variable to hold/register output of the above tasks.
+      until: vrouter_leaf.failed != true                # If the above code fails it will retry the code
+      retries: 3                                        # This is the retries count
+      delay: 3
 
 
-# This task will create vrouter on leaf switches.
-# It uses pn_ztp_vrouter_setup.py module from library/ directory.
-# If the tasks fails then it will retry as specified by retries count.
-#- name: Configure vrouter
-#  hosts: leaf[4:5]
-#  tags: vrouter-leaf
-#
-#  vars_files:
-#  - cli_vault.yml
-#
-#  tasks:
-#    - name: Setup vrouter
-#      pn_ztp_vrouter_setup:
-#        pn_loopback_ip: '104.255.61.7/32'                 # Loopback network to confgure ipv4 loopback ips to vrouters.
-#        pn_loopback_ip_v6: '2620:0000:167F:b000::18/128'  # Loopback network to confgure ipv6 loopback ips vrouters.
-#        pn_vrrp_id: '15'                                  # Vrrp-id for the vrouters
-#        pn_current_switch: "{{ inventory_hostname }}"     # The name of the current executing switch
-#        pn_spine_list: "{{ groups['spine'] }}"            # List of all spine switches mentioned under [spine] grp in hosts file.
-#        pn_leaf_list: "{{ groups['leaf'] }}"              # List of all leaf switches mentioned under [leaf] grp in hosts file.
-#        pn_pim_ssm: True                                  # Variable to specify pim_ssm for ospf
-#        pn_ospf_redistribute: 'static,bgp'
-#        pn_bgp_as: '65542'
-#        pn_bgp_redistribute: 'static,ospf'
+# This task will configure bgp-as in switches.
+- name: vrouter bgp network module
+  hosts: leaf[4:5]
+  tags: bgp-as
 
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      command: ' /usr/bin/cli --quiet -e --no-login-prompt vrouter-modify name {{ inventory_hostname }}-vrouter bgp-as 65542 ospf-default-information always '
+      register: output
+    - debug:
+        var: output
 
 
 # This task is to configure VRRP for Layer 3 fabric.
@@ -235,8 +230,8 @@
         pn_bfd: True                             	   # Indicate if BFD config should be added to eBGP. Default: False.
         pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
         pn_ospf_area_id: "0"           			   # Area id to configure for ospf. Default: 0
-        pn_iospf_ip_range: "104.255.61.92"       	   # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
-        pn_subnet_ipv4: "23"                               # subnet count for iosof ip range
+        pn_iospf_ip_range: "104.255.61.100"       	   # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
+        pn_subnet_ipv4: "27"                               # subnet count for iosof ip range
         pn_super_net_ipv4: "31"
         pn_iospf_vlan: "4040"                  		   # Vlan for creating the interfaces between leaf clusters. Default:'4040'
         pn_addr_type: 'ipv4_ipv6'                          # The type of address scheme to be used. Options: ipv4/dual_stack.
@@ -438,7 +433,7 @@
         pn_spine_list: "{{ groups['spine'] | default([]) }}"   # List of spine switches
         pn_leaf_list: "{{ groups['leaf'] | default([])}}"      # List of leaf switches
         pn_tunnel_mode: 'full-mesh'                            # Flag to indicate tunnel mode type Choices: full-mesh or manual.  Default: full-mesh.
-        pn_tunnel_loopback_port: '47'                          # Port to configure loopback
+        pn_tunnel_loopback_port: '11'                          # Port to configure loopback
         pn_tunnel_vxlan_id: '6100,2410,2420,2430'              # Specify vxlan id for configuration
         pn_tunnel_overlay_vlan: '490'                          # Specify overlay vlan
       register: vxlan_config                                   # Variable to hold/register output of the above tasks.
@@ -452,35 +447,68 @@
 
 # This task is to add loopback ip to bgp network.
 # It uses pn_vrouter_bgp_network.py module from library/ directory.
-#- name: vrouter bgp network module
-#  hosts: leaf[0]
-#  tags: BGP_NETWORK_ADD
-#  vars_files:
-#  - cli_vault.yml
-#
-#  tasks:
-#    - name: vrouter bgp network add functionality
-#      pn_vrouter_bgp_network: pn_cliusername={{ ansible_user }} pn_clipassword={{ ansible_ssh_pass }}  pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} action={{ item.action }}
-#      with_items:
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
-#        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
-#      register: output
-#    - debug:
-#        var: output
+- name: vrouter bgp network module
+  hosts: leaf[4]
+  tags: bgp-network
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} action={{ item.action }}
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[5]
+  tags: bgp-network
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} action={{ item.action }}
+      with_items:
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+      register: output
+    - debug:
+        var: output
 
 
 # This task is to modify admin service.
@@ -641,12 +669,33 @@
         var: output
 
 
+# This task is to create/delete snmp trap sink.
+# It uses pn_snmp_trap_sink.py module from library/ directory.
+- name: snmp trap sink module
+  hosts: spine, leaf
+  tags: snmp-trap-sink
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: snmp trap sink functionality
+      pn_snmp_trap_sink:
+        action: "create"
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_community: "baseball"                        # snmp community type.
+        pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
+        pn_dest_host: "104.254.40.101"                  # snmp dest host.
+      register: output
+    - debug:
+        var: output
+
 
 # This task is to create/modify snmp vacm.
 # It uses pn_snmp_vacm.py module from library/ directory.
 - name: snmp vacm module
   hosts: spine, leaf
-  tags: snmp-vcam
+  tags: snmp-vacm
 
   vars_files:
   - cli_vault.yml
@@ -669,7 +718,7 @@
 # It uses pn_snmp_vacm.py module from library/ directory.
 - name: snmp vacm module
   hosts: spine, leaf
-  tags: snmp-vcam
+  tags: snmp-vacm
 
   vars_files:
   - cli_vault.yml
