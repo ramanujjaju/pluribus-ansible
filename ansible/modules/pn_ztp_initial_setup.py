@@ -642,49 +642,55 @@ def toggle_local(module):
     return output
 
 
-def assign_inband_ipv6(module):
-
+def assign_ipv6_address(module, ipv6_address, current_switch, ip_type):
+    """
+    Add loopback interface and router id to vrouters.
+    :param module: The Ansible module to fetch input parameters.
+    :param ipv6_address: The loopback ip to be assigned.
+    :param current_switch: The name of current running switch.
+    :param ip_type: ip type inband/mgmt.
+    :return: String describing if loopback ip/router id got assigned or not.
+    """
     global CHANGED_FLAG
-    switches_list = []
-    switch_ip = {}
-    spines = module.params['pn_spine_list']
-    leafs = module.params['pn_leaf_list']
-    switch = module.params['pn_current_switch']
+    output = ''
 
-    if module.params['pn_inband_ipv6']:
-        address = module.params['pn_inband_ipv6'].split('::')
-        static_part = str(address[0]) + '::'
-        last_octet = str(address[1]).split('/')
-        subnet = last_octet[1]
-        count = int(last_octet[0])
-    else:
-        return 'in-band ipv6 not specified '
+    leaf_list = module.params['pn_leaf_list']
+    spine_list = module.params['pn_spine_list']
+    cli = pn_cli(module)
 
-    if spines:
-        switches_list += spines
+    if current_switch in spine_list:
+        count = spine_list.index(current_switch)
+    elif current_switch in leaf_list:
+        count = leaf_list.index(current_switch) + 2
 
-    if leafs:
-        switches_list += leafs
+    if ipv6_address:
+        ipv6 = ipv6_address.split('/')
+        subnet_ipv6 = ipv6[1]
+        ipv6 = ipv6[0]
+        ipv6 = ipv6.split(':')
+        if not ipv6[-1]:
+            ipv6[-1] = "0"
+        host_count_ipv6 = int(ipv6[-1], 16)
+        host_count_ipv6 += count
+        ipv6[-1] = str(hex(host_count_ipv6)[2:])
+        ipv6_ip = ':'.join(ipv6)
 
-
-    for sw in switches_list:
-        switch_ip[sw] = static_part + str(count) + '/' + subnet
-        count += 1
-
-    # Get existing in-band ip.
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' switch-local switch-setup-show format in-band-ip6'
-    existing_inband_ip = run_cli(module, cli).split()
+    cli += ' switch-local switch-setup-show format %s ' % ip_type
+    existing_ip = run_cli(module, cli).split()
 
-    if switch_ip[switch] not in existing_inband_ip:
+    if ipv6_address not in existing_ip:
         cli = clicopy
-        cli += ' switch %s switch-setup-modify ' % switch
-        cli += ' in-band-ip6 ' + switch_ip[switch]
+        cli += ' switch %s switch-setup-modify ' % current_switch
+        cli += ' %s %s/%s ' % ( ip_type, ipv6_ip, subnet_ipv6)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
+        output += 'Assigned %s ip ' % ipv6_ip
+    else:
+        output += 'ip %s already assigned ' % ipv6_ip
 
-    return 'Assigned in-band ipv6 ' + switch_ip[switch]
+    return output
 
 
 def assign_inband_ipv4(module):
@@ -748,10 +754,11 @@ def main():
             pn_leaf_list=dict(required=False, type='list', default=[]),
             pn_inband_ipv4=dict(required=False, type='str', default='192.16.0.1/24'),
             pn_inband_ipv6=dict(required=False, type='str'),
-            pn_current_switch=dict(required=False, type='str'),
-            pn_static_setup=dict(required=False, type='bool', default=False),
             pn_mgmt_ip=dict(required=False, type='str'),
             pn_mgmt_ip_subnet=dict(required=False, type='str'),
+            pn_mgmt_ipv6=dict(required=False, type='str'),
+            pn_current_switch=dict(required=False, type='str'),
+            pn_static_setup=dict(required=False, type='bool', default=False),
             pn_gateway_ip=dict(required=False, type='str'),
             pn_dns_ip=dict(required=False, type='str'),
             pn_dns_secondary_ip=dict(required=False, type='str'),
@@ -772,6 +779,8 @@ def main():
     current_switch = module.params['pn_current_switch']
     autotrunk = module.params['pn_autotrunk']
     autoneg = module.params['pn_autoneg']
+    mgmt_ipv6 = module.params['pn_mgmt_ipv6']
+    in_band_ipv6 = module.params['pn_inband_ipv6']
     results = []
     global CHANGED_FLAG
 
@@ -808,7 +817,8 @@ def main():
         })
 
     # Configure fabric control network to either mgmt or in-band
-    if ('Success' or 'created') in configure_control_network(module, control_network):
+    if 'Success' in configure_control_network(module, control_network)\
+    or 'created' in configure_control_network(module, control_network):
         CHANGED_FLAG.append(True)
         results.append({
             'switch': current_switch,
@@ -866,11 +876,20 @@ def main():
     })
 
     # Assign in-band ipv6.
-    out = assign_inband_ipv6(module)
+    out = assign_ipv6_address(module, in_band_ipv6, current_switch, "in-band-ip6")
     results.append({
         'switch': current_switch,
         'output': out
     })
+
+    # Assign mgmt ipv6.
+    if mgmt_ipv6:
+        out = assign_ipv6_address(module, mgmt_ipv6, current_switch, "mgmt-ip6")
+        results.append({
+            'switch': current_switch,
+            'output': out
+        })
+
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
