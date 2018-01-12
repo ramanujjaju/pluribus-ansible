@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI admin-session-timeout-modify """
+""" PN CLI snmp-trap-sink-create/delete """
 #
 # This file is part of Ansible
 #
@@ -23,12 +23,13 @@ from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
-module: pn_admin_session_timeout
+module: pn_snmp_trap_sink
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 2
-short_description: CLI command to modify admin-session-timeout.
+short_description: CLI command to create/delete snmp-trap-sink.
 description:
-  - C(modify): Modify login session timeout
+  - C(create): create a SNMPv1 trap receiver
+  - C(delete): delete a SNMPv1 trap receiver
 options:
   pn_cliswitch:
     description:
@@ -37,33 +38,51 @@ options:
     type: str
   pn_action:
     description:
-      - admin-session-timeout configuration command.
+      - snmp-trap-sink configuration command.
     required: true
-    choices: ['modify']
+    choices: ['create', 'delete']
     type: str
-  pn_timeout:
+  pn_dest_host:
     description:
-      - Maximum time to wait for user activity before terminating login session
+      - destination host
     required: false
     type: str
+  pn_community:
+    description:
+      - community type
+    required: false
+    type: str
+  pn_dest_port:
+    description:
+      - destination port - default 162
+    required: false
+    type: str
+  pn_type:
+    description:
+      - trap type - default TRAP_TYPE_V2C_TRAP
+    required: false
+    choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM']
 """
 
 EXAMPLES = """
-- name: admin session timeout functionality
-  pn_admin_session_timeout:
-    pn_action: "modify"
-    pn_timeout: '3600'
+- name: snmp trap sink functionality
+  pn_snmp_trap_sink:
+    pn_action: "create"
+    pn_cliswitch: "{{ inventory_hostname }}"
+    pn_community: "baseball"
+    pn_type: "TRAP_TYPE_V2_INFORM"
+    pn_dest_host: "104.254.40.101"
 """
 
 RETURN = """
 command:
   description: the CLI command run on the target node.
 stdout:
-  description: set of responses from the admin-session-timeout command.
+  description: set of responses from the snmp-trap-sink command.
   returned: always
   type: list
 stderr:
-  description: set of error responses from the admin-session-timeout command.
+  description: set of error responses from the snmp-trap-sink command.
   returned: on error
   type: list
 changed:
@@ -89,7 +108,7 @@ def run_cli(module, cli):
         module.fail_json(
             command=' '.join(cli),
             stderr=err.strip(),
-            msg="admin-session-timeout %s operation failed" % action,
+            msg="snmp-trap-sink %s operation failed" % action,
             changed=False
         )
 
@@ -97,14 +116,14 @@ def run_cli(module, cli):
         module.exit_json(
             command=' '.join(cli),
             stdout=out.strip(),
-            msg="admin-session-timeout %s operation completed" % action,
+            msg="snmp-trap-sink %s operation completed" % action,
             changed=True
         )
 
     else:
         module.exit_json(
             command=' '.join(cli),
-            msg="admin-session-timeout %s operation completed" % action,
+            msg="snmp-trap-sink %s operation completed" % action,
             changed=True
         )
 
@@ -114,22 +133,40 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str', choices=['modify']),
-            pn_timeout=dict(required=False, type='str'),
+            pn_action=dict(required=True, type='str',
+                           choices=['create', 'delete']),
+            pn_dest_host=dict(required=False, type='str'),
+            pn_community=dict(required=False, type='str'),
+            pn_dest_port=dict(required=False, type='str'),
+            pn_type=dict(required=False, type='str',
+                         choices=['TRAP_TYPE_V1_TRAP',
+                         'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM']),
         )
     )
 
     # Accessing the arguments
     switch = module.params['pn_cliswitch']
     mod_action = module.params['pn_action']
-    timeout = module.params['pn_timeout']
+    dest_host = module.params['pn_dest_host']
+    community = module.params['pn_community']
+    dest_port = module.params['pn_dest_port']
+    type = module.params['pn_type']
 
     # Building the CLI command string
     cli = pn_cli(module, switch)
-    cli += ' admin-session-timeout-' + mod_action
-    if mod_action in ['modify']:
-        if timeout:
-            cli += ' timeout ' + timeout
+    cli += ' snmp-trap-sink-' + mod_action
+    if mod_action in ['create', 'delete']:
+        if dest_host:
+            cli += ' dest-host ' + dest_host
+        if community:
+            cli += ' community ' + community
+        if dest_port:
+            cli += ' dest-port ' + dest_port
+
+    if mod_action in ['create']:
+        if type:
+            cli += ' type ' + type
+
     run_cli(module, cli)
 
 if __name__ == '__main__':

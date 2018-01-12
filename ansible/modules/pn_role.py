@@ -37,7 +37,7 @@ options:
       - Target switch to run the CLI on.
     required: False
     type: str
-  action:
+  pn_action:
     description:
       - role configuration command.
     required: true
@@ -83,7 +83,7 @@ options:
 EXAMPLES = """
 - name: role functionality
   pn_role:
-    action: "create"
+    pn_action: "create"
     pn_name: "abcd"
     pn_scope: "local"
 """
@@ -113,7 +113,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['action']
+    action = module.params['pn_action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -147,7 +147,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            action=dict(required=True, type='str',
+            pn_action=dict(required=True, type='str',
                         choices=['create', 'modify', 'delete']),
             pn_scope=dict(required=False, type='str',
                           choices=['local', 'fabric']),
@@ -163,7 +163,7 @@ def main():
 
     # Accessing the arguments
     switch = module.params['pn_cliswitch']
-    mod_action = module.params['action']
+    mod_action = module.params['pn_action']
     scope = module.params['pn_scope']
     access = module.params['pn_access']
     shell = module.params['pn_shell']

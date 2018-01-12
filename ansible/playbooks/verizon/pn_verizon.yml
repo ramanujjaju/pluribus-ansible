@@ -32,7 +32,7 @@
 # If the tasks fails then it will retry as specified by retries count.
 # sets up initial fabric setup of the switch.
 - name: Zero Touch Provisioning - Initial setup
-  hosts: all
+  hosts: spine, leaf
   tags: fabric-setup
   serial: 1
 
@@ -48,7 +48,6 @@
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
         pn_inband_ipv4: '104.255.65.40/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
-        pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
 #        pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
@@ -125,6 +124,7 @@
 
 
 # This task will configure bgp-as in switches.
+# It uses pn_vrouter.py module from library/ directory.
 - name: vrouter bgp network module
   hosts: leaf[4:5]
   tags: bgp-as
@@ -134,7 +134,11 @@
 
   tasks:
     - name: vrouter bgp network add functionality
-      command: ' /usr/bin/cli --quiet -e --no-login-prompt vrouter-modify name {{ inventory_hostname }}-vrouter bgp-as 65542 ospf-default-information always '
+      pn_vrouter:
+        pn_name: "{{ inventory_hostname }}-vrouter"
+        pn_action: "modify"
+        pn_bgp_as: "65542"
+        pn_ospf_default_information: "always"
       register: output
     - debug:
         var: output
@@ -261,7 +265,7 @@
     - name: Add a vrouter interface
       pn_vrouter_iface:
         pn_action: "add"                                # vRouter interface command - add/remove/modify.
-        pn_vrouter: "hmplabpsq-we60100-vrouter"         # Name of the vrouter.
+        pn_vrouter: "{{ inventory_hostname }}-vrouter"  # Name of the vrouter.
         pn_vlan: "490"                                  # Interface vlan.
         pn_interface_ip: "10.9.9.1/24"                  # IP address for the interface in x.x.x.x/n format.
         pn_mtu: "9216"                                  # Interface MTU.
@@ -283,7 +287,7 @@
     - name: Add a vrouter interface
       pn_vrouter_iface:
         pn_action: "add"                               # vRouter interface command - add/remove/modify.
-        pn_vrouter: "hmplabpsq-we60200-vrouter"        # Name of the vrouter.
+        pn_vrouter: "{{ inventory_hostname }}-vrouter" # Name of the vrouter.
         pn_vlan: "490"                                 # Interface vlan.
         pn_interface_ip: "10.9.10.1/24"                # IP address for the interface in x.x.x.x/n format.
         pn_mtu: "9216"                                 # Interface MTU.
@@ -307,7 +311,7 @@
         pn_cliswitch: "{{ inventory_hostname }}"            # Name of the switch on which this task is currently getting executed.
         pn_query_interval: '10'                             # query-interval  igmp query interval in seconds
         pn_querier_timeout: '30'                            # querier-timeout igmp querier timeout in seconds
-        action: 'modify'                                    # Action to be performed
+        pn_action: 'modify'                                    # Action to be performed
 
 
 # This task is to create VLAN.
@@ -336,7 +340,7 @@
 # This task is to modify fabric to local scope.
 # It uses pn_fabric_local.py module from library/ directory.
 - name: fabric local module
-  hosts: spine[0]
+  hosts: spine, leaf
   tags: fabric-local
 
   vars_files:
@@ -346,7 +350,7 @@
     - name: fabric local modify
       pn_fabric_local:
         pn_current_switch: "{{ inventory_hostname }}"     # Name of the switch on which this task is currently getting executed.
-        action: 'modify'                                  # Action to be performed
+        pn_action: 'modify'                                  # Action to be performed
         pn_vlan: '610'                                    # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
       register: output
     - debug:
@@ -455,7 +459,7 @@
 
   tasks:
     - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} action={{ item.action }}
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
       with_items:
         - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
         - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
@@ -488,7 +492,7 @@
 
   tasks:
     - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} action={{ item.action }}
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
       with_items:
         - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
         - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
@@ -524,7 +528,7 @@
     - name: admin service functionality
       pn_admin_service:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        action: "modify"                                # admin service configuration command:modify.
+        pn_action: "modify"                             # admin service configuration command:modify.
         pn_web: False                                   # Specify web type True/False.
         pn__if: "mgmt"                                  # Specify type of network
         pn_web_ssl: False                               # Specify web ssl type True/False.
@@ -551,7 +555,7 @@
     - name: admin service functionality
       pn_admin_service:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        action: "modify"                                # admin service configuration command:modify.
+        pn_action: "modify"                             # admin service configuration command:modify.
         pn_web: False                                   # Specify web type True/False.
         pn__if: "data"                                  # Specify type of network
         pn_web_ssl: False                               # Specify web ssl type True/False.
@@ -578,7 +582,7 @@
     - name: admin session timeout functionality
       pn_admin_session_timeout:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        action: "modify"                                # admin session timeout configuration choice=modify.
+        pn_action: "modify"                             # admin session timeout configuration choice=modify.
 
         pn_timeout: '3600s'                             # Specify duration of timeout of admin session
       register: output
@@ -681,7 +685,7 @@
   tasks:
     - name: snmp trap sink functionality
       pn_snmp_trap_sink:
-        action: "create"
+        pn_action: "create"
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
         pn_community: "baseball"                        # snmp community type.
         pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
@@ -704,7 +708,7 @@
     - name: snmp vacm functionality
       pn_snmp_vacm:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        action: "create"                                # snmp vacm configuration command: create/delete/modify.
+        pn_action: "create"                             # snmp vacm configuration command: create/delete/modify.
         pn_user_name: "VINETro"                         # Specify the name of the snmp vacm.
         pn_auth: True                                   # snmp authentication required.
         pn_priv: True                                   # snmp privileges.
@@ -727,7 +731,7 @@
     - name: snmp vacm functionality
       pn_snmp_vacm:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        action: "create"                                # snmp vacm configuration command: create/delete/modify.
+        pn_action: "create"                             # snmp vacm configuration command: create/delete/modify.
         pn_user_name: "VINETrw"                         # Specify the name of the snmp vacm.
         pn_auth: True                                   # snmp authentication required.
         pn_priv: True                                   # snmp privileges.
@@ -750,7 +754,7 @@
     - name: role functionality
       pn_role:
         pn_cliswitch: "{{ inventory_hostname }}"      # Name of the switch on which this task is currently getting executed.
-        action: "create"                              # Specify the action of role. choices=['create', 'modify', 'delete']
+        pn_action: "create"                           # Specify the action of role. choices=['create', 'modify', 'delete']
         pn_name: "abcd"                               # Specify the name of the role.
         pn_scope: "local"                             # Specify the scope of the role. choices=choices=['local', 'fabric']
       register: output
@@ -780,3 +784,28 @@
     - debug:
         var: output
 
+
+# This task is to create/modify switch configs.
+# It uses pn_switch_setup.py module from library/ directory.
+- name: Modify in-band network
+  hosts: spine[0]
+  tags: inband-ipv6
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Modify switch inband ipv6
+      pn_switch_setup: pn_action="modify" pn_cliswitch={{ item.pn_cliswitch }} pn_in_band_ip6={{ item.ip }} 
+      with_items:
+        - {pn_cliswitch: 'hmplabpsq-we60100', ip: '2620:0:167f:b010::10/64'}
+        - {pn_cliswitch: 'hmplabpsq-we60200', ip: '2620:0:167f:b010::11/64'}
+        - {pn_cliswitch: 'hmplabpsq-we50100', ip: '2620:0:167f:b010::14/64'}
+        - {pn_cliswitch: 'hmplabpsq-we50200', ip: '2620:0:167f:b010::15/64'}
+        - {pn_cliswitch: 'hmplabpsq-we50300', ip: '2620:0:167f:b010::16/64'}
+        - {pn_cliswitch: 'hmplabpsq-we50400', ip: '2620:0:167f:b010::17/64'}
+        - {pn_cliswitch: 'hmplabpsq-we50500', ip: '2620:0:167f:b010::18/64'}
+        - {pn_cliswitch: 'hmplabpsq-we50600', ip: '2620:0:167f:b010::19/64'}
+      register: output
+    - debug:
+        var: output

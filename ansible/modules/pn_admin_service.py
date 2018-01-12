@@ -35,7 +35,7 @@ options:
       - Target switch to run the CLI on.
     required: False
     type: str
-  action:
+  pn_action:
     description:
       - admin-service configuration command.
     required: true
@@ -101,7 +101,7 @@ options:
 EXAMPLES = """
 - name: admin service functionality
   pn_admin_service:
-    action: "modify"
+    pn_action: "modify"
     pn_web: False
     pn__if: "mgmt"
     pn_web_ssl: False
@@ -137,7 +137,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['action']
+    action = module.params['pn_action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -171,7 +171,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            action=dict(required=True, type='str', choices=['modify']),
+            pn_action=dict(required=True, type='str', choices=['modify']),
             pn_web=dict(required=False, type='bool'),
             pn_web_ssl=dict(required=False, type='bool'),
             pn_snmp=dict(required=False, type='bool'),
@@ -188,7 +188,7 @@ def main():
 
     # Accessing the arguments
     switch = module.params['pn_cliswitch']
-    mod_action = module.params['action']
+    mod_action = module.params['pn_action']
     web = module.params['pn_web']
     web_ssl = module.params['pn_web_ssl']
     snmp = module.params['pn_snmp']

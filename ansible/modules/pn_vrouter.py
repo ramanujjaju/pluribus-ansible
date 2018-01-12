@@ -36,16 +36,6 @@ description:
   - C(modify) modifies a vRouter service.
   - Certain parameters are allowed with certain actions only.
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
   pn_cliswitch:
     description:
       - Target switch to run the CLI on.
@@ -349,8 +339,6 @@ def pn_cli(module):
     :param module: The Ansible module to fetch username, password and switch
     :return: returns the cli string for further processing
     """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
     cliswitch = module.params['pn_cliswitch']
     action = module.params['pn_action']
 
@@ -358,9 +346,6 @@ def pn_cli(module):
 
     if action == 'delete':
         cli += '-e '
-
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
 
     if cliswitch:
         cli += ' switch ' + cliswitch
@@ -421,7 +406,7 @@ def run_cli(module, cli):
 
     # Response in JSON format
     if err:
-        module.fail_json(
+        module.exit_json(
             command=' '.join(cli),
             stderr=err.strip(),
             msg="vRouter %s operation failed" % action,
@@ -448,8 +433,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
@@ -514,6 +497,7 @@ def main():
             pn_ospf_distance_local=dict(type='str'),
             pn_ospf_stub_router=dict(type='bool'),
             pn_ospf_stub_router_period=dict(type='str'),
+            pn_ospf_default_information=dict(type='str'),
             pn_ospf_bfd=dict(type='bool'),
             pn_vrrp_track_port=dict(type='str'),
             pn_bgp_snmp=dict(type='bool'),
@@ -594,6 +578,7 @@ def main():
     bgp_snmp_notif = module.params['pn_bgp_snmp_notif']
     ospf_snmp = module.params['pn_ospf_snmp']
     ospf_snmp_notif = module.params['pn_ospf_snmp_notif']
+    ospf_default_information = module.params['pn_ospf_default_information']
 
     # Building the CLI command string
     cli = pn_cli(module)
@@ -765,6 +750,9 @@ def main():
                        + ospf_redist_connected_routemap
             if ospf_redist_bgp_routemap:
                 cli += ' ospf-redist-bgp-routemap ' + ospf_redist_bgp_routemap
+
+            if ospf_default_information:
+                cli += ' ospf-default-information ' + ospf_default_information
 
     run_cli(module, cli)
 

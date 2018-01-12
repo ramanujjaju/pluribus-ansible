@@ -37,7 +37,7 @@ options:
       - Target switch to run the CLI on.
     required: False
     type: str
-  action:
+  pn_action:
     description:
       - snmp-vacm configuration command.
     required: true
@@ -73,7 +73,7 @@ options:
 EXAMPLES = """
 - name: snmp vacm functionality
   pn_snmp_vacm:
-    action: "create"
+    pn_action: "create"
     pn_user_name: "VINETrw"
     pn_auth: True
     pn_priv: True
@@ -105,7 +105,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['action']
+    action = module.params['pn_action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -139,7 +139,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            action=dict(required=True, type='str',
+            pn_action=dict(required=True, type='str',
                         choices=['create', 'modify', 'delete']),
             pn_oid_restrict=dict(required=False, type='str'),
             pn_priv=dict(required=False, type='bool'),
@@ -152,7 +152,7 @@ def main():
 
     # Accessing the arguments
     switch = module.params['pn_cliswitch']
-    mod_action = module.params['action']
+    mod_action = module.params['pn_action']
     oid_restrict = module.params['pn_oid_restrict']
     priv = module.params['pn_priv']
     auth = module.params['pn_auth']

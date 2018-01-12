@@ -200,7 +200,7 @@ def main():
     if action == 'create':
         if check_admin_syslog(module, name):
             module.exit_json(
-                msg='admin-syslog with name %s
+                msg='admin-syslog with name %s \
                      already present in the switch' % name
             )
     elif action == 'modify' or action == 'delete':

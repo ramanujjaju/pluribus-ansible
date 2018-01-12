@@ -31,7 +31,7 @@ description:
   - C(add): add Border Gateway Protocol network to a vRouter
   - C(remove): remove Border Gateway Protocol network from a vRouter
 options:
-  action:
+  pn_action:
     description:
       - vrouter-bgp-network configuration command.
     required: true
@@ -60,7 +60,7 @@ EXAMPLES = """
     pn_vrouter_name: "hmplabpsq-we50100-vrouter"
     pn_network: "104.255.61.1"
     pn_netmask: "32"
-    action: "add"
+    pn_action: "add"
 """
 
 RETURN = """
@@ -88,7 +88,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['action']
+    action = module.params['pn_action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -121,7 +121,7 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            action=dict(required=True, type='str', choices=['add', 'remove']),
+            pn_action=dict(required=True, type='str', choices=['add', 'remove']),
             pn_netmask=dict(required=False, type='str'),
             pn_network=dict(required=False, type='str'),
             pn_vrouter_name=dict(required=False, type='str'),
@@ -129,7 +129,7 @@ def main():
     )
 
     # Accessing the arguments
-    mod_action = module.params['action']
+    mod_action = module.params['pn_action']
     netmask = module.params['pn_netmask']
     network = module.params['pn_network']
     vrouter_name = module.params['pn_vrouter_name']

@@ -30,7 +30,7 @@ short_description: CLI command to modify fabric-local.
 description:
   - C(modify): modify fabric local information
 options:
-  action:
+  pn_action:
     description:
       - fabric-local configuration command.
     required: true
@@ -62,7 +62,7 @@ EXAMPLES = """
 - name: Fabric local module
   pn_fabric_local:
     pn_current_switch: "{{ inventory_hostname }}"
-    action: "modify"
+    pn_action: "modify"
     pn_vlan: "610"
 """
 
@@ -91,7 +91,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['action']
+    action = module.params['pn_action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -128,7 +128,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_current_switch=dict(required=True, type='str'),
-            action=dict(required=True, type='str', choices=['modify']),
+            pn_action=dict(required=True, type='str', choices=['modify']),
             pn_fabric_network=dict(required=False, type='str',
                                    choices=['mgmt', 'in-band']),
             pn_vlan=dict(required=False, type='str'),
@@ -141,7 +141,7 @@ def main():
     )
 
     # Accessing the arguments
-    mod_action = module.params['action']
+    mod_action = module.params['pn_action']
     fabric_network = module.params['pn_fabric_network']
     vlan = module.params['pn_vlan']
     control_network = module.params['pn_control_network']

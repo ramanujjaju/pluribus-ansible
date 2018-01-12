@@ -36,7 +36,7 @@ options:
       - Target switch to run the CLI on.
     required: False
     type: str
-  action:
+  pn_action:
     description:
       - vrouter-pim-config configuration command.
     required: true
@@ -97,7 +97,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
-    action = module.params['action']
+    action = module.params['pn_action']
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
@@ -131,7 +131,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            action=dict(required=True, type='str', choices=['modify']),
+            pn_action=dict(required=True, type='str', choices=['modify']),
             pn_query_interval=dict(required=False, type='str'),
             pn_querier_timeout=dict(required=False, type='str'),
             pn_hello_interval=dict(required=False, type='str'),
@@ -140,7 +140,7 @@ def main():
     )
 
     # Accessing the arguments
-    mod_action = module.params['action']
+    mod_action = module.params['pn_action']
     query_interval = module.params['pn_query_interval']
     querier_timeout = module.params['pn_querier_timeout']
     hello_interval = module.params['pn_hello_interval']
