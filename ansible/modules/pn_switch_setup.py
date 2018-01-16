@@ -284,7 +284,7 @@ def main():
             pn_mgmt_ip_assignment=dict(required=False, type='str',
                                        choices=['none', 'dhcp']),
             pn_date=dict(required=False, type='str'),
-            pn_password=dict(required=False, type='str'),
+            pn_password=dict(required=False, type='str', no_log=True),
             pn_banner=dict(required=False, type='str'),
             pn_dns_secondary_ip=dict(required=False, type='str'),
             pn_switch_name=dict(required=False, type='str'),

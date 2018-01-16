@@ -19,6 +19,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -29,16 +30,6 @@ short_description: CLI command to create/delete/modify a trunk.
 description:
   - Execute trunk-create, trunk-delete or trunk-modify command.
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
   pn_cliswitch:
     description:
       - Target switch to run the cli on.
@@ -210,28 +201,6 @@ TRUNK_EXISTS = None
 TRUNK_ID_EXISTS = None
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user "%s":"%s" ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def check_cli(module):
     """
     This method checks for idempotency using the trunk-show command.
@@ -241,7 +210,8 @@ def check_cli(module):
     """
     name = module.params['pn_name']
     trunk_id = module.params['pn_trunk_id']
-    show_cli = pn_cli(module)
+    switch = module.params['pn_cliswitch']
+    show_cli = pn_cli(module, switch)
     # Global flags
     global TRUNK_EXISTS, TRUNK_ID_EXISTS
 
@@ -270,7 +240,7 @@ def run_cli(module, cli):
 
     # Response in JSON format
     if err:
-        module.fail_json(
+        module.exit_json(
             command=' '.join(cli),
             stderr=err.strip(),
             msg="Trunk %s operation failed" % action,
@@ -297,8 +267,6 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                         choices=['create', 'delete', 'modify']),
@@ -341,8 +309,9 @@ def main():
     )
 
     # Accessing the arguments
+    switch = module.params['pn_cliswitch']
     action = module.params['pn_action']
-    command = 'trunk-' + action
+    command = ' trunk-' + action
     name = module.params['pn_name']
     trunk_id = module.params['pn_trunk_id']
     ports = module.params['pn_ports']
@@ -375,7 +344,7 @@ def main():
 
 
     # Building the CLI command string
-    cli = pn_cli(module)
+    cli = pn_cli(module, switch)
     check_cli(module)
     cli += ' %s name %s ' % (command, name)
 

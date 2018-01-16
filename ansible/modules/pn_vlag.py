@@ -19,6 +19,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -29,16 +30,6 @@ short_description: CLI command to create/delete/modify vlag.
 description:
   - Execute vlag-create, vlag-delete or vlag-modify command.
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
   pn_cliswitch:
     description:
       - Target switch to run this command on.
@@ -137,28 +128,6 @@ changed:
 VLAG_EXISTS = None
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user "%s":"%s" ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def check_cli(module):
     """
     This method checks for idempotency using the vlag-show command.
@@ -167,7 +136,8 @@ def check_cli(module):
     :return Global Booleans: VLAG_EXISTS
     """
     name = module.params['pn_name']
-    show_cli = pn_cli(module)
+    switch = module.params['pn_cliswitch']
+    show_cli = pn_cli(module, switch)
 
     show_cli += ' vlag-show format name no-show-headers'
     show_cli = shlex.split(show_cli)
@@ -194,7 +164,7 @@ def run_cli(module, cli):
 
     # Response in JSON format
     if err:
-        module.fail_json(
+        module.exit_json(
             command=' '.join(cli),
             stderr=err.strip(),
             msg="vLAG %s operation failed" % action,
@@ -221,8 +191,6 @@ def main():
     """ This section is for argument parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
@@ -246,8 +214,9 @@ def main():
     )
 
     # Argument accessing
+    switch = module.params['pn_cliswitch']
     action = module.params['pn_action']
-    command = 'vlag-' + action
+    command = ' vlag-' + action
     name = module.params['pn_name']
     port = module.params['pn_port']
     peer_port = module.params['pn_peer_port']
@@ -261,7 +230,7 @@ def main():
     lacp_port_priority = module.params['pn_lacp_port_priority']
 
     # Building the CLI command string
-    cli = pn_cli(module)
+    cli = pn_cli(module, switch)
     check_cli(module)
     cli += ' %s name %s ' % (command, name)
 

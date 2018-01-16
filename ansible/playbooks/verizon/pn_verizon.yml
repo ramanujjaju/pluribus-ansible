@@ -809,3 +809,69 @@
       register: output
     - debug:
         var: output
+
+
+## This task is to create/delete/modify trunk configs.
+## It uses pn_trunk.py module from library/ directory.
+#- name:  create trunk
+#  hosts: leaf[4]
+#  tags: trunk
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: create trunk
+#      pn_trunk:
+#        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+#        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
+#        pn_name: "505tocisco"                          # Specify the name of trunk.
+#        pn_ports: "2,3"                                # Specify the ports.
+#      register: output
+#    - debug:
+#        var: output
+#
+#
+## This task is to create/delete/modify trunk configs.
+## It uses pn_trunk.py module from library/ directory.
+#- name:  create trunk
+#  hosts: leaf[5]
+#  tags: trunk
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: create trunk
+#      pn_trunk:
+#        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+#        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
+#        pn_name: "506tocisco"                          # Specify the name of trunk.
+#        pn_ports: "4,5"                                # Specify the ports.
+#      register: output
+#    - debug:
+#        var: output
+
+
+## This task is to create/delete/modify vlag configs.
+## It uses pn_vlag.py module from library/ directory.
+#- name:  create vlag
+#  hosts: leaf[4]
+#  tags: vlag
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: create vlag
+#      pn_vlag:
+#        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
+#        pn_name: "pntocisco"                           # Specify the name of vlag.
+#        pn_port: "505tocisco"                          # Specify the port of vlag.
+#        pn_peer_port: "506tocisco"                     # Specify the peer port.
+#        pn_mode: "active-active"                       # Specify mode. choices=['active-standby', 'active-active'].
+#        pn_lacp_mode: "passive"                        # Specify lacp mode. choices=['off', 'passive', 'active'].
+#      register: output
+#    - debug:
+#        var: output
+

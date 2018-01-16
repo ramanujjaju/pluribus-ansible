@@ -875,13 +875,6 @@ def main():
         'output': out
     })
 
-    # Assign in-band ipv6.
-    out = assign_ipv6_address(module, in_band_ipv6, current_switch, "in-band-ip6")
-    results.append({
-        'switch': current_switch,
-        'output': out
-    })
-
     # Assign mgmt ipv6.
     if mgmt_ipv6:
         out = assign_ipv6_address(module, mgmt_ipv6, current_switch, "mgmt-ip6")
