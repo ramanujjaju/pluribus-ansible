@@ -215,7 +215,7 @@ def main():
 
     if action == 'add':
         if tag_untag:
-            cli += tag_untag
+            cli += ' ' + tag_untag
 
     run_cli(module, cli)
 
