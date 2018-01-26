@@ -1,24 +1,24 @@
 #!/usr/bin/python
 """ PN CLI system-settings-modify """
 #
-# This file is part of Ansible
+# Copyright 2018 Pluribus Networks
 #
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -29,16 +29,6 @@ short_description: CLI command to modify system-settings.
 description:
   - C(modify): update system settings
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
   pn_cliswitch:
     description:
       - Target switch to run the CLI on.
@@ -183,28 +173,6 @@ changed:
 RESTART_STR = "nvOSd must be restarted for this setting to take effect"
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    cli = '/usr/bin/cli --quiet -e '
-
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def run_cli(module, cli):
     """
     This method executes the cli command on the target node(s) and returns the
@@ -232,8 +200,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str', choices=['modify']),
             pn_lldp=dict(required=False, type='bool'),
@@ -260,6 +226,7 @@ def main():
     )
 
     # Accessing the arguments
+    switch = module.params['pn_cliswitch']
     action = module.params['pn_action']
     command = 'system-settings-' + action
     lldp = module.params['pn_lldp']
@@ -284,8 +251,8 @@ def main():
     routing_over_vlags = module.params['pn_routing_over_vlags']
 
     # Building the CLI command string
-    cli = pn_cli(module)
-    cli += command
+    cli = pn_cli(module, switch, username, password)
+    cli += " " + command
 
     if lldp:
         if lldp is True:
@@ -382,8 +349,8 @@ def main():
 
     if out is not None:
         if RESTART_STR in out:
-            cli = pn_cli(module)
-            cli += ' --no-login-prompt nvos-restart '
+            cli = pn_cli(module, switch, username, password)
+            cli += ' nvos-restart '
             aggr_cli += ' and ' + cli
             out = run_cli(module, cli)
             if out is not None:

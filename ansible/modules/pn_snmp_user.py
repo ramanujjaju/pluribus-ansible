@@ -18,7 +18,9 @@
 #
 
 import shlex
+import os
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -102,26 +104,7 @@ changed:
   type: bool
 """
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    cliswitch = module.params['pn_cliswitch']
-
-    cli = '/usr/bin/cli --quiet --script-password '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    cli += ' snmp-user-'
-
-    return cli
-
-
-def run_cli(module, cli):
+def run_cli(module, cli, pass_args=None):
     """
     This method executes the cli command on the target node(s) and returns the
     output. The module then exits based on the output.
@@ -129,8 +112,22 @@ def run_cli(module, cli):
     :param module: The Ansible module to fetch command
     """
     action = module.params['pn_action']
-    cli = shlex.split(cli)
-    rc, out, err = module.run_command(cli)
+    if pass_args:
+        fd_r, fd_w = os.pipe()
+        newpid = os.fork()
+        if newpid == 0:
+           os.close(fd_w)
+           cli = cli.replace('--quiet -e --no-login-prompt', '--quiet  --pass-fd %s ' % (fd_r))
+           cli = shlex.split(cli)
+           rc, out, err = module.run_command(cli, close_fds=False)
+           os.close(fd_r)
+        else:
+           os.close(fd_r)
+           os.write(fd_w, pass_args)
+           os.close(fd_w)
+    else:
+        cli = shlex.split(cli)
+        rc, out, err = module.run_command(cli) 
 
     # Response in JSON format
     if err:
@@ -164,7 +161,7 @@ def check_user(module, user_name):
     :return: String of user if exists else Success.
     """
     cli = pn_cli(module)
-    cli += 'show user-name ' + user_name
+    cli += 'snmp-user-show user-name ' + user_name
     cli = shlex.split(cli)
     return module.run_command(cli)[1]
 
@@ -186,6 +183,7 @@ def main():
         )
     )
 
+    pass_args = ''
     user_name = module.params['pn_user_name']
     action = module.params['pn_action']
     auth = module.params['pn_auth']
@@ -213,12 +211,14 @@ def main():
         )
 
     cli = pn_cli(module)
-    cli += action + ' user-name ' + user_name
+    cli += ' snmp-user-'+ action + ' user-name ' + user_name
 
+    pass_args = ""
     if action != 'delete':
         if auth or auth_hash:
             cli += ' auth'
-            cli += ' auth-password %s' % auth_pass
+            cli += ' auth-password'
+	    pass_args += 'auth-password %s ' % (auth_pass)
             if auth_hash:
                 cli += ' auth-hash %s' % auth_hash
         else:
@@ -226,11 +226,12 @@ def main():
 
         if priv:
             cli += ' priv'
-            cli += ' priv-password %s' % priv_pass
+            cli += ' priv-password'
+	    pass_args += 'priv-password %s' % (priv_pass)
         else:
             cli += ' no-priv'
 
-    run_cli(module, cli)
+    run_cli(module, cli, pass_args)
 
 if __name__ == '__main__':
     main()

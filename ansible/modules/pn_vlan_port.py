@@ -1,24 +1,22 @@
 #!/usr/bin/python
 """ PN CLI vlan-port-add/vlan-port-remove """
+# Copyright 2018 Pluribus Networks
 #
-# This file is part of Ansible
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
-#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 
 DOCUMENTATION = """
@@ -30,16 +28,6 @@ short_description: CLI command to add/remove tagged/untagged ports to VLANs.
 description:
   - Execute vlan-port-add or vlan-port-remove command.
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
   pn_cliswitch:
     description:
       - Target switch(es) to run the cli on.
@@ -115,28 +103,6 @@ changed:
 """
 
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    if username and password:
-        cli = '/usr/bin/cli --quiet --user "%s":"%s" ' % (username, password)
-    else:
-        cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
-
 def run_cli(module, cli):
     """
     Method to execute the cli command on the target node(s) and returns the
@@ -178,8 +144,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['add', 'remove']),
@@ -193,6 +157,7 @@ def main():
     )
 
     # Accessing the arguments
+    switch = module.params['pn_cliswitch']
     action = module.params['pn_action']
     command = 'vlan-port-' + action
     vlanid = module.params['pn_vlanid']
@@ -201,7 +166,7 @@ def main():
     vlan_vnet = module.params['pn_vlan_vnet']
     tag_untag = module.params['pn_tag_untag']
 
-    cli = pn_cli(module)
+    cli = pn_cli(module, switch)
     cli += ' ' + command
 
     if vlanid:

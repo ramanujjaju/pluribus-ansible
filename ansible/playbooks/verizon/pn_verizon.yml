@@ -350,7 +350,7 @@
     - name: fabric local modify
       pn_fabric_local:
         pn_current_switch: "{{ inventory_hostname }}"     # Name of the switch on which this task is currently getting executed.
-        pn_action: 'modify'                                  # Action to be performed
+        pn_action: 'modify'                               # Action to be performed
         pn_vlan: '610'                                    # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
       register: output
     - debug:
@@ -454,6 +454,7 @@
 - name: vrouter bgp network module
   hosts: leaf[4]
   tags: bgp-network
+
   vars_files:
   - cli_vault.yml
 
@@ -461,22 +462,22 @@
     - name: vrouter bgp network add functionality
       pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
       with_items:
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50500-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
       register: output
     - debug:
         var: output
@@ -494,22 +495,22 @@
     - name: vrouter bgp network add functionality
       pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
       with_items:
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
       register: output
     - debug:
         var: output
@@ -851,8 +852,9 @@
 #      register: output
 #    - debug:
 #        var: output
-
-
+#
+#
+#
 ## This task is to create/delete/modify vlag configs.
 ## It uses pn_vlag.py module from library/ directory.
 #- name:  create vlag
@@ -874,4 +876,96 @@
 #      register: output
 #    - debug:
 #        var: output
+#
+#
+#
+## This task is to add ports to vlan.
+## It uses pn_vlan_port.py module from library/ directory.
+#- name:  add port to vlan
+#  hosts: leaf[4]
+#  tags: vlan-port
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: vlan add port
+#      pn_vlan_port: pn_action="add" pn_cliswitch={{ inventory_hostname }} pn_ports=129 pn_vlanid={{ item.vlan_id }}
+#
+#      with_items:
+#        - {vlan_id: '241'}
+#        - {vlan_id: '242'}
+#        - {vlan_id: '243'}
+#        - {vlan_id: '610'}
+#      register: output
+#    - debug:
+#        var: output
+#
+## This task is to add ports to vlan.
+## It uses pn_vlan_port.py module from library/ directory.
+#- name:  add port to vlan
+#  hosts: leaf[5]
+#  tags: vlan-port
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: vlan add port
+#      pn_vlan_port: pn_action="add" pn_cliswitch={{ inventory_hostname }} pn_ports=10 pn_vlanid={{ item.vlan_id }}
+#
+#      with_items:
+#        - {vlan_id: '241'}
+#        - {vlan_id: '242'}
+#        - {vlan_id: '243'}
+#        - {vlan_id: '610'}
+#      register: output
+#    - debug:
+#        var: output
 
+
+# This task is to enable cpu class.
+# It uses pn_system_ettings.py module from library/ directory.
+- name: Enable cpu class 
+  hosts: spine, leaf
+  tags: system-settings
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Enable cpu class
+      pn_system_settings:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "modify"                            # Specify the action. choices=['modify']
+        pn_cpu_class_enable: True                      # Specify to enable/disable cpu class.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete/modify cpu class.
+# It uses pn_cpu_class.py module from library/ directory.
+- name: Modify cpu class
+  hosts: spine[0]
+  tags: cpu-class
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Modify cpu class
+      pn_cpu_class: pn_action="modify" pn_name={{ item.name }} pn_hog_protect={{ item.hog_protect }}
+      with_items:
+        - {name: 'ospf', hog_protect: 'enable'}
+        - {name: 'bgp', hog_protect: 'enable'}
+        - {name: 'lacp', hog_protect: 'enable'}
+        - {name: 'vrrp', hog_protect: 'enable'}
+        - {name: 'local-subnet', hog_protect: 'enable'}
+        - {name: 'stp', hog_protect: 'enable'}
+        - {name: 'bfd', hog_protect: 'enable'}
+      register: output
+    - debug:
+        var: output
