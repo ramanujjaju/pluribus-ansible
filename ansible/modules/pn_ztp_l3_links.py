@@ -418,7 +418,7 @@ def calculate_link_ip_addresses_ipv6(address_str, cidr_str, supernet_str, ip_cou
     network_hex = []
     for i in range(8):
         network_hex.append(hex(network[i])[2:])
-    network_supernet = find_network_v6(network_hex, mask_supernet)
+    network_supernet = find_network_v6(address, mask_supernet)
     broadcast_supernet = find_broadcast_v6(network_supernet, supernet)
 
     initial_ip = network_supernet[7]
@@ -507,6 +507,7 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
 
+    point_to_point = False
     if vrouter_name not in existing_vrouter:
         # Add vrouter interface.
         cli = clicopy
@@ -521,7 +522,13 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
             cli += ' if-nat-realm ' + module.params['pn_if_nat_realm']
         run_cli(module, cli)
         # Add BFD config to vrouter interface.
+        config_args = ''
+        if module.params['pn_supernet_ipv4'] == '31' or module.params['pn_supernet_ipv6'] == '127':
+            point_to_point = True
         if module.params['pn_bfd']:
+            config_args = ' bfd-min-rx %s bfd-multiplier %s' % (module.params['pn_bfd_min_rx'],
+                                                                module.params['pn_bfd_multiplier'])
+        if config_args or point_to_point:
             cli = clicopy
             cli += ' vrouter-interface-show vrouter-name ' + vrouter_name
             cli += ' l3-port %s format nic no-show-headers ' % port
@@ -530,8 +537,10 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
             cli = clicopy
             cli += ' vrouter-interface-config-add '
             cli += ' vrouter-name %s nic %s ' % (vrouter_name, nic)
-            cli += ' bfd-min-rx ' + module.params['pn_bfd_min_rx']
-            cli += ' bfd-multiplier ' + module.params['pn_bfd_multiplier']
+            if config_args:
+                cli += config_args
+            if point_to_point:
+                cli += ' ospf-network-type point-to-point'
             run_cli(module, cli)
 
         CHANGED_FLAG.append(True)
@@ -545,7 +554,9 @@ def create_interface(module, switch, ip_ipv4, ip_ipv6, port, addr_type):
     if module.params['pn_bfd']:
         output += ' %s: Added BFD configuration to %s \n' % (switch,
                                                              vrouter_name)
-
+    if point_to_point:
+        output += ' %s: Added OSPF network type as point-to-point to %s \n' %(switch,
+                                                                              vrouter_name)
     return output
 
 

@@ -747,7 +747,6 @@ def add_ospf_neighbor(module, current_switch):
             last_octet_ip_mod = int(last_octet[0]) % (1 << (32 - int(netmask)))
             ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
             ospf_network = static_part + str(ospf_last_octet) + '/' + netmask
-
 #            elif addr_type == 'ipv6':
 #                ip = ip.split('/')
 #                ip_spine = ip[0]
@@ -864,6 +863,8 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     output = ''
     vlan_id = module.params['pn_iospf_vlan']
     pim_ssm = module.params['pn_pim_ssm']
+    ospf_cost = module.params['pn_ospf_cost']
+    vr_name = switch_name + '-vrouter'
 
     cli = pn_cli(module)
     clicopy = cli
@@ -907,6 +908,16 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
             switch_name, interface_ip, vrouter
         )
         CHANGED_FLAG.append(True)
+
+    cli = clicopy
+    cli += ' vrouter-interface-show vlan %s ' % vlan_id
+    cli += ' vrouter-name %s format nic parsable-delim ,' % vr_name
+    nic = run_cli(module, cli).split(',')[1]
+
+    cli = clicopy
+    cli += ' vrouter-interface-config-add vrouter-name %s' % vr_name
+    cli += ' nic %s ospf-cost %s ' % (nic, ospf_cost)
+    run_cli(module, cli)
 
     cli = clicopy
     cli += ' vrouter-ospf-show'
@@ -1064,6 +1075,7 @@ def main():
                                   default='75.75.75.0/24'),
             pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
             pn_iospf_vlan=dict(required=False, type='str', default='4040'),
+            pn_ospf_cost=dict(required=False, type='str', default='10000'),
             pn_super_net_ipv4=dict(required=False, type='str', default='31'),
             pn_iospf_ip_range=dict(required=False, type='str',
                                    default='75.75.75.0/24'),

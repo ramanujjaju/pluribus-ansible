@@ -19,6 +19,7 @@
 
 import shlex
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
@@ -29,16 +30,6 @@ short_description: CLI command to create/delete/modify a vflow.
 description:
   - Execute vflow-create, vflow-delete or vflow-modify command. 
 options:
-  pn_cliusername:
-    description:
-      - Provide login username if user is not root.
-    required: False
-    type: str
-  pn_clipassword:
-    description:
-      - Provide login password if user is not root.
-    required: False
-    type: str
   pn_cliswitch:
     description:
       - Target switch to run the CLI on.
@@ -211,7 +202,6 @@ options:
     description:
       - Layer 3 protocol for the vFlow.
     required: False
-    choices: ['tcp', 'udp', 'icmp', 'igmp', 'ip', 'icmpv6']
     type: str
   pn_tcp_flags:
     description:
@@ -483,27 +473,6 @@ changed:
 
 VFLOW_EXISTS = None
 
-def pn_cli(module):
-    """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
-    """
-    username = module.params['pn_cliusername']
-    password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
-
-    cli = '/usr/bin/cli --quiet '
-
-    if username and password:
-        cli += '--user "%s":"%s" ' % (username, password)
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
-
-    return cli
-
 
 def check_cli(module):
     """
@@ -515,7 +484,8 @@ def check_cli(module):
     :return Global Booleans: VFLOW_EXISTS
     """
     name = module.params['pn_name']
-    show_cli = pn_cli(module)
+    switch_local = module.params['pn_switch_local']
+    show_cli = pn_cli(module, switch_local=True)
     # Global flags
     global VFLOW_EXISTS
 
@@ -524,7 +494,7 @@ def check_cli(module):
         show_cli = show_cli.replace('switch ', '')
         show_cli = show_cli.replace(cliswitch, '')
 
-    # Check for any vRouters on the switch
+    # Check for any vflows on the switch
     check_vflow = show_cli + ' vflow-show '
     check_vflow += 'format name no-show-headers'
     check_vflow = shlex.split(check_vflow)
@@ -573,8 +543,6 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str', no_log=True),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str',
                            choices=['create', 'delete', 'modify']),
@@ -613,8 +581,7 @@ def main():
             pn_tos=dict(type='str'),
             pn_vlan_pri=dict(type='str'),
             pn_ttl=dict(type='str'),
-            pn_proto=dict(type='str',
-                          choices=['tcp', 'udp', 'icmp', 'igmp', 'ip', 'icmpv6']),
+            pn_proto=dict(type='str'),
             pn_tcp_flags=dict(type='str',
                               choices=['fin', 'syn', 'rst', 'push', 'ack',
                                        'urg', 'ece', 'cwr']),
@@ -642,6 +609,7 @@ def main():
             pn_action_ports_value=dict(type='str'),
             pn_mirror=dict(type='str'),
             pn_process_mirror=dict(type='bool'),
+            pn_switch_local=dict(type='bool',default=True),
             pn_log_packets=dict(type='bool'),
             pn_packet_log_max=dict(type='str'),
             pn_log_stats=dict(type='bool'),
@@ -673,6 +641,7 @@ def main():
             pn_enable=dict(type='bool'),
             pn_table_name=dict(type='str'),
             pn_cpu_class=dict(type='str'),
+            pn_dscp_action=dict(type='str'),
         )
     )
 
@@ -752,6 +721,7 @@ def main():
     enable = module.params['pn_enable']
     table_name = module.params['pn_table_name']
     cpu_class = module.params['pn_cpu_class']
+    dscp_action = module.params['pn_dscp_action']
 
     # Building the CLI command string
     cli = pn_cli(module)
@@ -849,6 +819,8 @@ def main():
         if dscp_map:
             cli += ' dscp-map ' + dscp_map
 
+        if dscp_action:
+            cli += ' action ' + dscp_action
         if tos_start:
             cli += ' tos-start ' + tos_start
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-def pn_cli(module, switch=None, username=None, password=None):
+def pn_cli(module, switch=None, username=None, password=None, switch_local=None):
     """
     Method to generate the cli portion to launch the Netvisor cli.
     :param module: The Ansible module to fetch username and password.
@@ -13,5 +13,7 @@ def pn_cli(module, switch=None, username=None, password=None):
         cli += '--user "%s":"%s" ' % (username, password)
     if switch:
         cli += ' switch ' + switch
+    if switch_local:
+        cli += ' switch-local '
 
     return cli
