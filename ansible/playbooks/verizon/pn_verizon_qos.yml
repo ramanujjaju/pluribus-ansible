@@ -642,3 +642,23 @@
       register: output
     - debug:
         var: output
+
+# This task is to add vflows.
+# It uses pn_vflow.py module from library/ directory.
+- name: vflow module
+  hosts: spine, leaf
+  tags: vflow13
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vflow module
+      pn_vflow: pn_action={{ item.action }} pn_name={{ item.name }} pn_scope='local' pn_inport='1-72' pn_proto='ip' pn_src_ip={{ item.src_ip }} pn_enable=True pn_stats_interval='10' pn_log_stats=True pn_dscp_map='verizon_qos'  pn_dscp_action={{ item.dscp_action }} pn_action_value={{ item.action_value }} pn_precedence='9'
+      with_items:
+        - {action: 'create', name: 'm_dc_mocana_retail_proxy_1', src_ip: '153.114.156.22', dscp_action: 'set-dscp', action_value: '22'}
+        - {action: 'create', name: 'm_dc_mocana_retail_proxy_2', src_ip: '153.114.220.22', dscp_action: 'set-dscp', action_value: '22'}
+        - {action: 'create', name: 'm_dc_mocana_retail_proxy_3', src_ip: '153.114.253.22', dscp_action: 'set-dscp', action_value: '22'}
+      register: output
+    - debug:
+        var: output
