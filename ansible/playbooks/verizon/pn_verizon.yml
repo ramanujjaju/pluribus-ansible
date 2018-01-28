@@ -381,7 +381,7 @@
 # This task is to configure ZTP for layer3 fabric.
 # It uses pn_ztp_l3_links.py module from library/ directory.
 # If the tasks fails then it will retry as specified by retries count.
-- name: Configure L3 links 
+- name: Configure L3 links
   hosts: leaf
   tags: l3-links
 
@@ -396,18 +396,18 @@
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_addr_type: 'ipv4_ipv6'                       # The type of address scheme to be used. Options: ipv4/dual_stack.
         pn_net_address_ipv4: "104.255.61.68"            # Ipv4 Network address required to calculate link IPs for layer3 fabric.
-        pn_cidr_ipv4: "24"                              # Ipv4 Subnet mask required to calculate link IPs for layer3 fabric.
-        pn_if_nat_realm: 'internal'                     # Type of if_nat_realm. choices=['internal', 'external'], default='internal' 
-        pn_supernet_ipv4: "31"                          # Ipv4 Supernet mask required to calculate link IPs for layer3 fabric.
+        pn_cidr_ipv4: "24"                              # Ipv4 CIDR required to calculate link IPs for layer3 fabric.
+        pn_subnet_ipv4: "31"                            # Ipv4 Subnet mask required to calculate link IPs for layer3 fabric.
+        pn_if_nat_realm: 'internal'                     # Type of if_nat_realm. choices=['internal', 'external'], default='internal'
         pn_net_address_ipv6: '2620:0000:167F:b001::40'  # Ipv6 Network address required to calculate link IPs for layer3 fabric.
         pn_cidr_ipv6: "112"                             # ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
-        pn_supernet_ipv6: "127"                         # Ipv6 Supernet mask required to calculate link IPs for layer3 fabric.
+        pn_subnet_ipv6: "127"                           # Ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
         pn_bfd: True                          		# Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
         pn_bfd_min_rx: 200           			# BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
         pn_bfd_multiplier: 3    			# BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.
         pn_update_fabric_to_inband: False  		# Flag to indicate if fabric network should be updated to in-band. Default: False.
         pn_stp: True                          		# Flag to enable STP (spanning tree protocol). Default: False.
-        pn_jumbo_frames: True                           # Flag to assign mtu Default: False. 
+        pn_jumbo_frames: True                           # Flag to assign mtu Default: False.
       register: ztp_l3_out                              # Variable to hold/register output of the above tasks.
       until:  ztp_l3_out.failed != true                 # If error pops up it will retry the code
       retries: 3                                        # This is the retries count
@@ -434,14 +434,18 @@
         pn_leaf_list: "{{ groups['leaf'] }}"               # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_bfd: True                             	   # Indicate if BFD config should be added to eBGP. Default: False.
         pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
-        pn_ospf_area_id: "0"           			   # Area id to configure for ospf. Default: 0
-        pn_iospf_ip_range: "104.255.61.100"       	   # Ip range for creating the interfaces between leaf clusters. Default:'75.75.75.0/24'
-        pn_subnet_ipv4: "27"                               # subnet count for iospf ip range
-        pn_super_net_ipv4: "31"                            # ipv4 supernet for iospf 
+        pn_ospf_v4_area_id: "0"           		   # Area id to configure for ospfv4. Default: 0
+        pn_ospf_v6_area_id: "0.0.0.0"           	   # Area id to configure for ospfv6. Default: 0.0.0.0
         pn_iospf_vlan: "4040"                  		   # Vlan for creating the interfaces between leaf clusters. Default:'4040'
+        pn_iospf_ipv4_range: "104.255.61.100"       	   # Ip range for creating the interfaces between leaf clusters.
+        pn_cidr_ipv4: "24"                                 # subnet count for iospf ip range
+        pn_subnet_ipv4: "31"                               # ipv4 subnet for iospf
+        pn_iospf_ipv6_range: "2620:0000:167F:b001::a0"     # Ip range for creating the interfaces between leaf clusters.
+        pn_cidr_ipv6: "112"                                # subnet count for iospf ip range
+        pn_subnet_ipv6: "127"                              # ipv4 subnet for iospf
         pn_ospf_cost: "10000"                              # ospf cost. Default: '10000'.
         pn_addr_type: 'ipv4_ipv6'                          # The type of address scheme to be used. Options: ipv4/dual_stack.
-        pn_ospf_redistribute: "connected"                  # Variable to configure ospf redistribute 
+        pn_ospf_redistribute: "connected"                  # Variable to configure ospf redistribute
         pn_pim_ssm: True                       		   # pim-ssm variable for configuration
         pn_area_configure_flag: "singlearea"               # Varible to configure area choices=['singlearea', 'dualarea'], default='singlearea'
         pn_jumbo_frames: True                              # Flag to assign mtu Default: False.
