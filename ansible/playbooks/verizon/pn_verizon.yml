@@ -936,7 +936,6 @@
         var: output
 
 
-
 # This task is to enable cpu class.
 # It uses pn_system_ettings.py module from library/ directory.
 - name: Enable cpu class 
@@ -979,6 +978,182 @@
         - {name: 'local-subnet', hog_protect: 'enable'}
         - {name: 'stp', hog_protect: 'enable'}
         - {name: 'bfd', hog_protect: 'enable'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete access list
+# It uses pn_access_list.py module from the library/ directory
+- name: Create access list
+  hosts: spine[0]
+  tags: access-list
+
+  tasks:
+    - name: Create access list
+      pn_access_list:
+        pn_action: 'create'
+        pn_name: 'block_src'
+        pn_scope: 'local'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add/remove ip to/from access list
+# It uses pn_access_list_ip.py module from the library/ directory
+- name: Add ip to access list
+  hosts: spine[0]
+  tags: access-list-ip
+
+  tasks:
+    - name: Add ip to access list
+      pn_access_list_ip:
+        pn_action: 'add'
+        pn_name: 'block_src'
+        pn_ip: 'fe80::640e:94ff:fe27:5f0f'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete prefix list
+# It uses pn_prefix_list.py module from the library/ directory
+- name: Create prefix list
+  hosts: spine[0]
+  tags: prefix-list
+
+  tasks:
+    - name: Create prefix list
+      pn_prefix_list:
+        pn_action: 'create'
+        pn_name: 'block_prefix'
+        pn_scope: 'local'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add/remove network to/from prefix list
+# It uses pn_prefix_list_network.py module from the library/ directory
+- name: Add network to prefix list
+  hosts: spine[0]
+  tags: prefix-list-network
+
+  tasks:
+    - name: Add network to prefix list
+      pn_prefix_list_network:
+        pn_action: 'add'
+        pn_name: 'block_prefix'
+        pn_network: '2001:1111:abcd:1234::'
+        pn_netmask: '64'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete dhcp filter
+# It uses pn_dhcp_filter.py module from the library/ directory
+- name: Create dhcp filter
+  hosts: spine[0]
+  tags: dhcp-filter
+
+  tasks:
+    - name: Create dhcp filter
+      pn_dhcp_filter:
+        pn_action: 'create'
+        pn_name: 'dhcp_filter'
+        pn_trusted_ports: '10,11'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete ipv6security raguard
+# It uses pn_ipv6security_raguard.py module from the library/ directory
+- name: Create ipv6security raguard
+  hosts: spine[0]
+  tags: ipv6security-raguard
+
+  tasks:
+    - name: Create ipv6security raguard
+      pn_ipv6security_raguard:
+        pn_action: 'create'
+        pn_name: 'test'
+        pn_device: 'router'
+        pn_access_list: 'block_ra'
+        pn_prefix_list: 'block_prefix'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add/remove ports to/from ipv6security raguard
+# It uses pn_ipv6security_raguard_port.py module from the library/ directory
+- name: Add ipv6security raguard ports
+  hosts: spine[0]
+  tags: ipv6security-raguard-port
+
+  tasks:
+    - name: Add ipv6security raguard ports
+      pn_ipv6security_raguard_port:
+        pn_action: 'add'
+        pn_name: 'test'
+        pn_ports: '10'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add/remove vlans to/from ipv6security raguard
+# It uses pn_ipv6security_raguard_vlan.py module from the library/ directory
+- name: Add ipv6security raguard vlans
+  hosts: spine[0]
+  tags: ipv6security-raguard-vlan
+
+  tasks:
+    - name: Add ipv6security raguard vlans
+      pn_ipv6security_raguard_vlan:
+        pn_action: 'add'
+        pn_name: 'test'
+        pn_vlans: '100'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add/remove vrouter packet relay
+# It uses pn_vrouter_packet_relay.py module from the library/ directory
+- name: Add vrouter packet relay
+  hosts: spine[0]
+  tags: vrouter-packet-relay
+
+  tasks:
+    - name: Add vrouter packet relay
+      pn_vrouter_packet_relay:
+        pn_action: 'add'
+        pn_vrouter_name: 'spine-vrouter'
+        pn_forward_ip: '172.16.1.1'
+        pn_forward_proto: 'dhcp'
+        pn_nic: 'eth0'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to modify vflow table profile
+# It uses pn_vflow_table_profile.py module from the library/ directory
+- name: Modify vflow table profile
+  hosts: spine[0]
+  tags: vflow-table-profile
+
+  tasks:
+    - name: Modify vflow table profile
+      pn_vflow_table_profile:
+        pn_action: 'modify'
+        pn_profile: 'ipv6'
+        pn_hw_tbl: 'switch-main'
+        pn_enable: True
       register: output
     - debug:
         var: output
