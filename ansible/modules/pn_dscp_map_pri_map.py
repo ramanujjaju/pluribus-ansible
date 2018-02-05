@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI access-list-create/delete """
+""" PN CLI dscp-map-pri-map-modify """
 
 # Copyright 2018 Pluribus Networks
 #
@@ -21,13 +21,12 @@ from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
-module: pn_access_list
+module: pn_dscp_map_pri_map
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 2
-short_description: CLI command to create/delete access-list.
+short_description: CLI command to modify dscp-map-pri-map.
 description:
-  - C(create): create an access list
-  - C(delete): delete an access list
+  - C(modify): Update priority mappings in tables
 options:
   pn_cliswitch:
     description:
@@ -36,44 +35,46 @@ options:
     type: str
   pn_action:
     description:
-      - access-list configuration command.
+      - dscp-map-pri-map configuration command.
     required: true
-    choices: ['create', 'delete']
+    choices: ['modify']
+    type: str
+  pn_pri:
+    description:
+      - CoS priority
+    required: false
     type: str
   pn_name:
     description:
-      - Access List Name
+      - Name for the DSCP map
     required: false
     type: str
-  pn_scope:
+  pn_dsmap:
     description:
-      - scope - local or fabric
+      - DSCP value(s)
     required: false
-    choices: ['local', 'fabric']
+    type: str
 """
 
 EXAMPLES = """
-- name: create access list
-  pn_access_list:
-    pn_action: 'create'
-    pn_name: 'block_src'
-    pn_scope: 'local'
-
-- name: delete access list
-  pn_access_list:
-    pn_action: 'delete'
-    pn_name: 'block_src'
+- name: dscp map pri map modify
+  pn_dscp_map_pri_map:
+    pn_cliswitch: "{{ inventory_hostname }}"
+    pn_action: "modify"
+    pn_name: "verizon_qos"
+    pn_pri: "0"
+    pn_dsmap: "1-60"
 """
 
 RETURN = """
 command:
   description: the CLI command run on the target node.
 stdout:
-  description: set of responses from the access-list command.
+  description: set of responses from the dscp-map-pri-map command.
   returned: always
   type: list
 stderr:
-  description: set of error responses from the access-list command.
+  description: set of error responses from the dscp-map-pri-map command.
   returned: on error
   type: list
 changed:
@@ -99,7 +100,7 @@ def run_cli(module, cli):
         module.fail_json(
             command=' '.join(cli),
             stderr=err.strip(),
-            msg="access-list %s operation failed" % action,
+            msg="dscp-map-pri-map %s operation failed" % action,
             changed=False
         )
 
@@ -107,14 +108,14 @@ def run_cli(module, cli):
         module.exit_json(
             command=' '.join(cli),
             stdout=out.strip(),
-            msg="access-list %s operation completed" % action,
+            msg="dscp-map-pri-map %s operation completed" % action,
             changed=True
         )
 
     else:
         module.exit_json(
             command=' '.join(cli),
-            msg="access-list %s operation completed" % action,
+            msg="dscp-map-pri-map %s operation completed" % action,
             changed=True
         )
 
@@ -124,28 +125,31 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str',
-                        choices=['create', 'delete']),
+            pn_action=dict(required=True, type='str', choices=['modify']),
+            pn_pri=dict(required=False, type='str'),
             pn_name=dict(required=False, type='str'),
-            pn_scope=dict(required=False, type='str',
-                          choices=['local', 'fabric']),
+            pn_dsmap=dict(required=False, type='str'),
         )
     )
 
     # Accessing the arguments
-    action = module.params['pn_action']
+    switch = module.params['pn_cliswitch']
+    mod_action = module.params['pn_action']
+    pri = module.params['pn_pri']
     name = module.params['pn_name']
-    scope = module.params['pn_scope']
+    dsmap = module.params['pn_dsmap']
 
     # Building the CLI command string
-    cli = pn_cli(module)
-    cli += 'access-list-' + action
-    cli += ' name ' + name
-    
-    if action == 'create':
-        if scope:
-            cli += ' scope ' + scope
-    
+    cli = pn_cli(module, switch)
+    cli += ' dscp-map-pri-map-' + mod_action
+    if mod_action in ['modify']:
+        if pri:
+            cli += ' pri ' + pri
+        if name:
+            cli += ' name ' + name
+        if dsmap:
+            cli += ' dsmap ' + dsmap
+
     run_cli(module, cli)
 
 if __name__ == '__main__':

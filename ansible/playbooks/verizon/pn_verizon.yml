@@ -989,6 +989,9 @@
   hosts: spine[0]
   tags: access-list
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Create access list
       pn_access_list:
@@ -1005,6 +1008,9 @@
 - name: Add ip to access list
   hosts: spine[0]
   tags: access-list-ip
+
+  vars_files:
+  - cli_vault.yml
 
   tasks:
     - name: Add ip to access list
@@ -1023,6 +1029,9 @@
   hosts: spine[0]
   tags: prefix-list
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Create prefix list
       pn_prefix_list:
@@ -1039,6 +1048,9 @@
 - name: Add network to prefix list
   hosts: spine[0]
   tags: prefix-list-network
+
+  vars_files:
+  - cli_vault.yml
 
   tasks:
     - name: Add network to prefix list
@@ -1058,6 +1070,9 @@
   hosts: spine[0]
   tags: dhcp-filter
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Create dhcp filter
       pn_dhcp_filter:
@@ -1075,13 +1090,16 @@
   hosts: spine[0]
   tags: ipv6security-raguard
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Create ipv6security raguard
       pn_ipv6security_raguard:
         pn_action: 'create'
         pn_name: 'test'
         pn_device: 'router'
-        pn_access_list: 'block_ra'
+        pn_access_list: 'block_src'
         pn_prefix_list: 'block_prefix'
       register: output
     - debug:
@@ -1093,6 +1111,9 @@
 - name: Add ipv6security raguard ports
   hosts: spine[0]
   tags: ipv6security-raguard-port
+
+  vars_files:
+  - cli_vault.yml
 
   tasks:
     - name: Add ipv6security raguard ports
@@ -1111,6 +1132,9 @@
   hosts: spine[0]
   tags: ipv6security-raguard-vlan
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Add ipv6security raguard vlans
       pn_ipv6security_raguard_vlan:
@@ -1127,6 +1151,9 @@
 - name: Add vrouter packet relay
   hosts: spine[0]
   tags: vrouter-packet-relay
+
+  vars_files:
+  - cli_vault.yml
 
   tasks:
     - name: Add vrouter packet relay
@@ -1146,6 +1173,9 @@
 - name: Modify vflow table profile
   hosts: spine[0]
   tags: vflow-table-profile
+
+  vars_files:
+  - cli_vault.yml
 
   tasks:
     - name: Modify vflow table profile

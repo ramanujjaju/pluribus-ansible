@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI access-list-create/delete """
+""" PN CLI port-cos-bw-modify """
 
 # Copyright 2018 Pluribus Networks
 #
@@ -21,13 +21,12 @@ from ansible.module_utils.pn_nvos import pn_cli
 
 DOCUMENTATION = """
 ---
-module: pn_access_list
+module: pn_port_cos_bw
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 2
-short_description: CLI command to create/delete access-list.
+short_description: CLI command to modify port-cos-bw.
 description:
-  - C(create): create an access list
-  - C(delete): delete an access list
+  - C(modify): Update b/w settings for CoS queues
 options:
   pn_cliswitch:
     description:
@@ -36,44 +35,56 @@ options:
     type: str
   pn_action:
     description:
-      - access-list configuration command.
+      - port-cos-bw configuration command.
     required: true
-    choices: ['create', 'delete']
+    choices: ['modify']
     type: str
-  pn_name:
+  pn_max_bw_limit:
     description:
-      - Access List Name
+      - Maximum b/w in %
     required: false
     type: str
-  pn_scope:
+  pn_cos:
     description:
-      - scope - local or fabric
+      - CoS priority
     required: false
-    choices: ['local', 'fabric']
+    type: str
+  pn_port:
+    description:
+      - physical port
+    required: false
+    type: str
+  pn_weight:
+    description:
+      - Scheduling weight after b/w guarantee met
+    required: false
+    type: str
+  pn_min_bw_guarantee:
+    description:
+      - Minimum b/w in %
+    required: false
+    type: str
 """
 
 EXAMPLES = """
-- name: create access list
-  pn_access_list:
-    pn_action: 'create'
-    pn_name: 'block_src'
-    pn_scope: 'local'
-
-- name: delete access list
-  pn_access_list:
-    pn_action: 'delete'
-    pn_name: 'block_src'
+- name: port cos bw modify
+  pn_port_cos_bw:
+    pn_cliswitch: "{{ inventory_hostname }}"
+    pn_action: "modify"
+    pn_port: "all"
+    pn_cos: "4"
+    pn_min_bw_guarantee: "8"
 """
 
 RETURN = """
 command:
   description: the CLI command run on the target node.
 stdout:
-  description: set of responses from the access-list command.
+  description: set of responses from the port-cos-bw command.
   returned: always
   type: list
 stderr:
-  description: set of error responses from the access-list command.
+  description: set of error responses from the port-cos-bw command.
   returned: on error
   type: list
 changed:
@@ -99,7 +110,7 @@ def run_cli(module, cli):
         module.fail_json(
             command=' '.join(cli),
             stderr=err.strip(),
-            msg="access-list %s operation failed" % action,
+            msg="port-cos-bw %s operation failed" % action,
             changed=False
         )
 
@@ -107,14 +118,14 @@ def run_cli(module, cli):
         module.exit_json(
             command=' '.join(cli),
             stdout=out.strip(),
-            msg="access-list %s operation completed" % action,
+            msg="port-cos-bw %s operation completed" % action,
             changed=True
         )
 
     else:
         module.exit_json(
             command=' '.join(cli),
-            msg="access-list %s operation completed" % action,
+            msg="port-cos-bw %s operation completed" % action,
             changed=True
         )
 
@@ -124,28 +135,39 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliswitch=dict(required=False, type='str'),
-            pn_action=dict(required=True, type='str',
-                        choices=['create', 'delete']),
-            pn_name=dict(required=False, type='str'),
-            pn_scope=dict(required=False, type='str',
-                          choices=['local', 'fabric']),
+            pn_action=dict(required=True, type='str', choices=['modify']),
+            pn_max_bw_limit=dict(required=False, type='str'),
+            pn_cos=dict(required=False, type='str'),
+            pn_port=dict(required=False, type='str'),
+            pn_weight=dict(required=False, type='str'),
+            pn_min_bw_guarantee=dict(required=False, type='str'),
         )
     )
 
     # Accessing the arguments
-    action = module.params['pn_action']
-    name = module.params['pn_name']
-    scope = module.params['pn_scope']
+    switch = module.params['pn_cliswitch']
+    mod_action = module.params['pn_action']
+    max_bw_limit = module.params['pn_max_bw_limit']
+    cos = module.params['pn_cos']
+    port = module.params['pn_port']
+    weight = module.params['pn_weight']
+    min_bw_guarantee = module.params['pn_min_bw_guarantee']
 
     # Building the CLI command string
-    cli = pn_cli(module)
-    cli += 'access-list-' + action
-    cli += ' name ' + name
-    
-    if action == 'create':
-        if scope:
-            cli += ' scope ' + scope
-    
+    cli = pn_cli(module, switch)
+    cli += ' port-cos-bw-' + mod_action
+    if mod_action in ['modify']:
+        if max_bw_limit:
+            cli += ' max-bw-limit ' + max_bw_limit
+        if cos:
+            cli += ' cos ' + cos
+        if port:
+            cli += ' port ' + port
+        if weight:
+            cli += ' weight ' + weight
+        if min_bw_guarantee:
+            cli += ' min-bw-guarantee ' + min_bw_guarantee
+
     run_cli(module, cli)
 
 if __name__ == '__main__':

@@ -200,6 +200,8 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
+            pn_cliusername=dict(required=False, type='str', no_log=True),
+            pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_action=dict(required=True, type='str', choices=['modify']),
             pn_lldp=dict(required=False, type='bool'),
@@ -227,6 +229,8 @@ def main():
 
     # Accessing the arguments
     switch = module.params['pn_cliswitch']
+    username = module.params['pn_cliusername']
+    password = module.params['pn_clipassword']
     action = module.params['pn_action']
     command = 'system-settings-' + action
     lldp = module.params['pn_lldp']
@@ -251,7 +255,7 @@ def main():
     routing_over_vlags = module.params['pn_routing_over_vlags']
 
     # Building the CLI command string
-    cli = pn_cli(module, switch, username, password)
+    cli = pn_cli(module, switch)
     cli += " " + command
 
     if lldp:
