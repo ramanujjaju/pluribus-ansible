@@ -1187,3 +1187,22 @@
       register: output
     - debug:
         var: output
+
+
+# This task is to modify igmp snooping
+# It uses pn_igmp_snooping.py module from the library/ directory
+- name: "Modify IGMP Snooping"
+  hosts: all
+  tags: igmp-snooping
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Modify IGMP Snooping"
+      pn_igmp_snooping:
+        pn_action: 'modify'
+        pn_vxlan: True
+      register: output
+    - debug:
+        var: output
