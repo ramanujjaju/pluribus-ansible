@@ -1206,3 +1206,32 @@
       register: output
     - debug:
         var: output
+
+
+# This task is to create/delete/modify cpu class.
+# It uses pn_mgmt_cpu_class.py module from library/ directory.
+- name: Modify cpu mgmt class
+  hosts: spine, leaf
+  tags: cpu-mgmt-class
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Modify cpu mgmt class
+      pn_cpu_mgmt_class: pn_action="modify" pn_name={{ item.name }} pn_rate_limit={{ item.rate_limit }}
+      with_items:
+        - {name: 'arp', rate_limit: '1000'}
+        - {name: 'icmp', rate_limit: '1000'}
+        - {name: 'snmp', rate_limit: '1000'}
+        - {name: 'fabric', rate_limit: '1000'}
+        - {name: 'bcast', rate_limit: '1000'}
+        - {name: 'nfs', rate_limit: '1000'}
+        - {name: 'web', rate_limit: '1000'}
+        - {name: 'web-ssl', rate_limit: '1000'}
+        - {name: 'net-api', rate_limit: '1000'}
+#        - {name: 'ssh', rate_limit: '5000'}
+      register: output
+    - debug:
+        var: output
+
