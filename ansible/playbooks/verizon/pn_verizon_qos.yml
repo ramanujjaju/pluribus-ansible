@@ -26,6 +26,7 @@
 # It uses pn_dscp_map_pri_map.py module from library/ directory.
 - name: dscp map pri map module
   hosts: spine, leaf
+  hosts: spine
   tags: dscp-map-pri-map
 
   vars_files:
@@ -33,79 +34,16 @@
 
   tasks:
     - name: dscp map pri map modify
-      pn_dscp_map_pri_map:
-        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
-        pn_name: "verizon_qos"                          # Specify the name of the dscp-map-pri-map.
-        pn_pri: "0"                                     # Specify pri of  dscp-map-pri-map.
-        pn_dsmap: "1-60"                                # Specify the dsmap.
-      register: output
-    - debug:
-        var: output
-
-
-
-# This task is to modify dscp-map-pri-map.
-# It uses pn_dscp_map_pri_map.py module from library/ directory.
-- name: dscp map pri map module
-  hosts: spine, leaf
-  tags: dscp-map-pri-map
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: dscp map pri map modify
-      pn_dscp_map_pri_map:
-        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
-        pn_name: "verizon_qos"                          # Specify the name of the dscp-map-pri-map.
-        pn_pri: "5"                                     # Specify pri of  dscp-map-pri-map.
-        pn_dsmap: "46"                                  # Specify the dsmap.
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to modify dscp-map-pri-map.
-# It uses pn_dscp_map_pri_map.py module from library/ directory.
-- name: dscp map pri map module
-  hosts: spine, leaf
-  tags: dscp-map-pri-map
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: dscp map pri map modify
-      pn_dscp_map_pri_map:
-        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
-        pn_name: "verizon_qos"                          # Specify the name of the dscp-map-pri-map.
-        pn_pri: "4"                                     # Specify pri of  dscp-map-pri-map.
-        pn_dsmap: "32,34"                               # Specify the dsmap.
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to modify dscp-map-pri-map.
-# It uses pn_dscp_map_pri_map.py module from library/ directory.
-- name: dscp map pri map module
-  hosts: spine, leaf
-  tags: dscp-map-pri-map
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: dscp map pri map modify
-      pn_dscp_map_pri_map:
-        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
-        pn_name: "verizon_qos"                          # Specify the name of the dscp-map-pri-map.
-        pn_pri: "6"                                     # Specify pri of  dscp-map-pri-map.
-        pn_dsmap: "48,56"                               # Specify the dsmap.
+      pn_dscp_map_pri_map: pn_cliswitch={{ inventory_hostname }} pn_action="modify" pn_name="verizon_qos" pn_pri={{ item.pri }} pn_dsmap={{ item.dsmap }}
+      with_items:
+        - {pri: '0', dsmap: '40'}
+        - {pri: '1', dsmap: '8,10,12,14'}
+        - {pri: '2', dsmap: '16,18,20,22'}
+        - {pri: '3', dsmap: '24,26,28,30'}
+        - {pri: '4', dsmap: '32,34,36,38'}
+        - {pri: '5', dsmap: '46'}
+        - {pri: '6', dsmap: '48'}
+        - {pri: '7', dsmap: '56'}
       register: output
     - debug:
         var: output
@@ -124,7 +62,7 @@
     - name: port config modify
       pn_port_config:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
+        pn_action: "modify"                             # port config configuration command: modify.
         pn_port: "all"                                  # Specify the port/ports to be modified.
         pn_dscp_map: "verizon_qos"                      # Specify the name of dscp-map.
       register: output
@@ -145,11 +83,11 @@
     - name: port cos bw modify
       pn_port_cos_bw:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
+        pn_action: "modify"                             # port cos bw configuration command: modify.
         pn_port: "all"                                  # Specify the port/ports to be modified.
         pn_cos: "5"                                     # Specify the cos.
         pn_min_bw_guarantee: "20"                       # Specify the min bw guarentee.
-        pn_weight: "priority"                           # Specify the weight.
+        pn_weight: "20"                                 # Specify the weight.
       register: output
     - debug:
         var: output
@@ -168,7 +106,7 @@
     - name: port cos bw modify
       pn_port_cos_bw:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
+        pn_action: "modify"                             # port cos bw configuration command: modify.
         pn_port: "all"                                  # Specify the port/ports to be modified.
         pn_cos: "4"                                     # Specify the cos.
         pn_min_bw_guarantee: "8"                        # Specify the min bw guarentee.
@@ -190,7 +128,7 @@
     - name: port cos bw modify
       pn_port_cos_bw:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
+        pn_action: "modify"                             # port cos bw configuration command: modify.
         pn_port: "all"                                  # Specify the port/ports to be modified.
         pn_cos: "6"                                     # Specify the cos.
         pn_min_bw_guarantee: "4"                        # Specify the min bw guarentee.
@@ -212,10 +150,38 @@
     - name: port cos bw modify
       pn_port_cos_bw:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                             # admin-syslog configuration command: modify.
+        pn_action: "modify"                             # port cos bw configuration command: modify.
         pn_port: "all"                                  # Specify the port/ports to be modified.
         pn_cos: "0"                                     # Specify the cos.
         pn_min_bw_guarantee: "68"                       # Specify the min bw guarentee.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to modify port cos rate setting.
+# It uses pn_port_cos_rate_setting.py module from library/ directory.
+- name: port cos rate setting module
+  hosts: spine, leaf
+  tags: port-cos-rate-setting
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: port cos bw modify
+      pn_port_cos_rate_setting:
+        pn_cliswitch: "{{ inventory_hostname }}"          # Name of the switch on which this task is currently getting executed.
+        pn_action: "modify"                               # port cos rate setting configuration command: modify.
+        pn_port: "control-port"                           # Specify the port type choices=['control-port', 'data-port', 'span-ports']
+        pn_cos1_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos5_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos2_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos0_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos6_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos3_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos4_rate: "1000"                              # Specify the port cos-rate.
+        pn_cos7_rate: "1000"                              # Specify the port cos-rate.
       register: output
     - debug:
         var: output
