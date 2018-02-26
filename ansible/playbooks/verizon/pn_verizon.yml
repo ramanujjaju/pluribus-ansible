@@ -331,7 +331,7 @@
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_pim_ssm: True                               # Variable to specify pim_ssm for ospf
-        pn_ospf_redistribute: 'static'                 # Variable to configure ospf redistribute
+        pn_ospf_redistribute: 'none'                 # Variable to configure ospf redistribute
       register: vrouter_out                            # Variable to hold/register output of the above tasks.
       until: vrouter_out.failed != true                # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
@@ -358,7 +358,7 @@
         pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_pim_ssm: True                                # Variable to specify pim_ssm for ospf
-        pn_ospf_redistribute: 'static' 
+        pn_ospf_redistribute: 'none'
       register: vrouter_leaf                            # Variable to hold/register output of the above tasks.
       until: vrouter_leaf.failed != true                # If the above code fails it will retry the code
       retries: 3                                        # This is the retries count
@@ -467,7 +467,7 @@
         pn_subnet_ipv6: "127"                              # ipv4 subnet for iospf
         pn_ospf_cost: "10000"                              # ospf cost. Default: '10000'.
         pn_addr_type: 'ipv4_ipv6'                          # The type of address scheme to be used. Options: ipv4/dual_stack.
-        pn_ospf_redistribute: "connected"                  # Variable to configure ospf redistribute
+        pn_ospf_redistribute: "none"                  # Variable to configure ospf redistribute
         pn_pim_ssm: True                       		   # pim-ssm variable for configuration
         pn_area_configure_flag: "singlearea"               # Varible to configure area choices=['singlearea', 'dualarea'], default='singlearea'
         pn_jumbo_frames: True                              # Flag to assign mtu Default: False.
@@ -524,6 +524,50 @@
         var: output
 
 
+ This task is to create vrouter interface.
+ It uses pn_vrouter_iface.py module from library/ directory.
+- name: vrouter interface modules
+  hosts: spine[2]
+  tags: spine-svi
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Add a vrouter interface
+      pn_vrouter_iface:
+        pn_action: "add"                                # vRouter interface command - add/remove/modify.
+        pn_vrouter: "{{ inventory_hostname }}-vrouter"  # Name of the vrouter.
+        pn_vlan: "490"                                  # Interface vlan.
+        pn_interface_ip: "10.9.11.1/24"                  # IP address for the interface in x.x.x.x/n format.
+        pn_mtu: "9216"                                  # Interface MTU.
+      register: output
+    - debug:
+        var: output
+
+
+ This task is to create vrouter interface.
+ It uses pn_vrouter_iface.py module from library/ directory.
+- name: vrouter interface  modules
+  hosts: spine[3]
+  tags: spine-svi
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Add a vrouter interface
+      pn_vrouter_iface:
+        pn_action: "add"                               # vRouter interface command - add/remove/modify.
+        pn_vrouter: "{{ inventory_hostname }}-vrouter" # Name of the vrouter.
+        pn_vlan: "490"                                 # Interface vlan.
+        pn_interface_ip: "10.9.12.1/24"                # IP address for the interface in x.x.x.x/n format.
+        pn_mtu: "9216"                                 # Interface MTU.
+      register: output
+    - debug:
+        var: output
+
+
 # This task is to modify vrouter pim config
 # It uses pn_vrouter_pim_config module from library/ directory.
 - name: vrouter pim config module
@@ -540,9 +584,9 @@
         pn_query_interval: '10'                             # query-interval  igmp query interval in seconds
         pn_querier_timeout: '30'                            # querier-timeout igmp querier timeout in seconds
         pn_action: 'modify'                                    # Action to be performed
-
-
-
+      register: output
+    - debug:
+        var: output
 
 
 # This task will configure bgp-as in switches.
@@ -560,7 +604,7 @@
         pn_name: "{{ inventory_hostname }}-vrouter"
         pn_action: "modify"
         pn_bgp_as: "65542"
-        pn_ospf_default_information: "always"
+        pn_ospf_default_information: "originate"
       register: output
     - debug:
         var: output
@@ -584,17 +628,121 @@
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[4]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.64', netmask: '26', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[4]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[4]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b015::0', netmask: '64', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::38', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::3c', netmask: '126', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[4]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '126', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[4]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '126', action: 'add'}
       register: output
     - debug:
         var: output
@@ -605,6 +753,7 @@
 - name: vrouter bgp network module
   hosts: leaf[5]
   tags: bgp-network
+
   vars_files:
   - cli_vault.yml
 
@@ -617,17 +766,261 @@
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[5]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.64', netmask: '26', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[5]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[5]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b015::0', netmask: '64', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::38', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::3c', netmask: '126', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[5]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '126', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to add loopback ip to bgp network.
+# It uses pn_vrouter_bgp_network.py module from library/ directory.
+- name: vrouter bgp network module
+  hosts: leaf[5]
+  tags: bgp-network
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: vrouter bgp network add functionality
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      with_items:
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '126', action: 'add'}
+      register: output
+    - debug:
+        var: output
+
+
+- name: "Configure vrouter-bgp"
+  hosts: leaf[4]
+  tags: vrouter-bgp
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure vrouter-bgp"
+      pn_vrouter_bgp:
+        pn_action: "add"
+        pn_vrouter: "{{ item.vrouter }}"
+        pn_neighbor: "{{ item.neighbor }}"
+        pn_remote_as: "{{ item.remote }}"
+        pn_next_hop_self: True
+        pn_soft_reconfig: True
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '104.255.61.64', remote: '65020'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '104.255.61.66', remote: '65020'}
+      register: output
+    - debug:
+        var: output
+
+- name: "Configure vrouter-bgp"
+  hosts: leaf[4]
+  tags: vrouter-bgp
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure vrouter-bgp"
+      pn_vrouter_bgp:
+        pn_action: "add"
+        pn_vrouter: "{{ item.vrouter }}"
+        pn_neighbor: "{{ item.neighbor }}"
+        pn_remote_as: "{{ item.remote }}"
+        pn_multiprotocol: "ipv6-unicast"
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '2620:0:167f:b001::31', remote: '65020'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '2620:0:167f:b001::35', remote: '65020'}
+      register: output
+    - debug:
+        var: output
+
+
+- name: "Configure vrouter-bgp"
+  hosts: leaf[4]
+  tags: vrouter-bgp
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure vrouter-bgp"
+      pn_vrouter_bgp:
+        pn_action: "add"
+        pn_vrouter: "{{ item.vrouter }}"
+        pn_neighbor: "{{ item.neighbor }}"
+        pn_remote_as: "{{ item.remote }}"
+        pn_soft_reconfig: True
+        pn_multiprotocol: "ipv6-unicast"
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '2620:0:167f:b001::72', remote: '65542'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '2620:0:167f:b001::71', remote: '65542'}
+      register: output
+    - debug:
+        var: output
+
+
+- name: "Configure vrouter-bgp"
+  hosts: leaf[4]
+  tags: vrouter-bgp
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure vrouter-bgp"
+      pn_vrouter_bgp:
+        pn_action: "add"
+        pn_vrouter: "{{ item.vrouter }}"
+        pn_neighbor: "{{ item.neighbor }}"
+        pn_remote_as: "{{ item.remote }}"
+        pn_soft_reconfig: True
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '104.255.61.93', remote: '65542'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '104.255.61.92', remote: '65542'}
+      register: output
+    - debug:
+        var: output
+
+
+- name: "Configure vrouter-bgp"
+  hosts: leaf[4]
+  tags: vrouter-bgp
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure vrouter-bgp"
+      pn_vrouter_bgp:
+        pn_action: "add"
+        pn_vrouter: "{{ item.vrouter }}"
+        pn_neighbor: "{{ item.neighbor }}"
+        pn_remote_as: "{{ item.remote }}"
+        pn_update_src: "{{ item.src }}"
+        pn_multiprotocol: "ipv6-unicast"
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '2620:0:167f:b000::19', remote: '65542', src: '2620:0:167f:b000::18'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '2620:0:167f:b000::18', remote: '65542', src: '2620:0:167f:b000::19'}
+      register: output
+    - debug:
+        var: output
+
+
+- name: "Configure vrouter-bgp"
+  hosts: leaf[4]
+  tags: vrouter-bgp
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure vrouter-bgp"
+      pn_vrouter_bgp:
+        pn_action: "add"
+        pn_vrouter: "{{ item.vrouter }}"
+        pn_neighbor: "{{ item.neighbor }}"
+        pn_remote_as: "{{ item.remote }}"
+        pn_update_src: "{{ item.src }}"
+      with_items:
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '104.255.61.10', remote: '65542', src: '104.255.61.9'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '104.255.61.9', remote: '65542', src: '104.255.61.10'}
       register: output
     - debug:
         var: output
@@ -822,7 +1215,6 @@
       pn_admin_session_timeout:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
         pn_action: "modify"                             # admin session timeout configuration choice=modify.
-
         pn_timeout: '3600s'                             # Specify duration of timeout of admin session
       register: output
     - debug:
@@ -1039,6 +1431,8 @@
       with_items:
         - {pn_cliswitch: 'hmplabpsq-we60100', ip: '2620:0:167f:b010::10/64'}
         - {pn_cliswitch: 'hmplabpsq-we60200', ip: '2620:0:167f:b010::11/64'}
+        - {pn_cliswitch: 'hmplabpsq-we60300', ip: '2620:0:167f:b010::12/64'}
+        - {pn_cliswitch: 'hmplabpsq-we60400', ip: '2620:0:167f:b010::13/64'}
         - {pn_cliswitch: 'hmplabpsq-we50100', ip: '2620:0:167f:b010::14/64'}
         - {pn_cliswitch: 'hmplabpsq-we50200', ip: '2620:0:167f:b010::15/64'}
         - {pn_cliswitch: 'hmplabpsq-we50300', ip: '2620:0:167f:b010::16/64'}
@@ -1117,24 +1511,24 @@
         var: output
 
 
-# This task is to add/remove ip to/from access list
-# It uses pn_access_list_ip.py module from the library/ directory
-- name: Add ip to access list
-  hosts: spine[0]
-  tags: access-list-ip
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Add ip to access list
-      pn_access_list_ip:
-        pn_action: 'add'
-        pn_name: 'block_src'
-        pn_ip: 'fe80::640e:94ff:fe27:5f0f'
-      register: output
-    - debug:
-        var: output
+## This task is to add/remove ip to/from access list
+## It uses pn_access_list_ip.py module from the library/ directory
+#- name: Add ip to access list
+#  hosts: spine[0]
+#  tags: access-list-ip
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: Add ip to access list
+#      pn_access_list_ip:
+#        pn_action: 'add'
+#        pn_name: 'block_src'
+#        pn_ip: 'fe80::640e:94ff:fe27:5f0f'
+#      register: output
+#    - debug:
+#        var: output
 
 
 # This task is to create/delete prefix list
@@ -1157,31 +1551,31 @@
         var: output
 
 
-# This task is to add/remove network to/from prefix list
-# It uses pn_prefix_list_network.py module from the library/ directory
-- name: Add network to prefix list
-  hosts: spine[0]
-  tags: prefix-list-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Add network to prefix list
-      pn_prefix_list_network:
-        pn_action: 'add'
-        pn_name: 'block_prefix'
-        pn_network: '2001:1111:abcd:1234::'
-        pn_netmask: '64'
-      register: output
-    - debug:
-        var: output
+## This task is to add/remove network to/from prefix list
+## It uses pn_prefix_list_network.py module from the library/ directory
+#- name: Add network to prefix list
+#  hosts: spine[0]
+#  tags: prefix-list-network
+#
+#  vars_files:
+#  - cli_vault.yml
+#
+#  tasks:
+#    - name: Add network to prefix list
+#      pn_prefix_list_network:
+#        pn_action: 'add'
+#        pn_name: 'block_prefix'
+#        pn_network: '2001:1111:abcd:1234::'
+#        pn_netmask: '64'
+#      register: output
+#    - debug:
+#        var: output
 
 
 # This task is to create/delete dhcp filter
 # It uses pn_dhcp_filter.py module from the library/ directory
 - name: Create dhcp filter
-  hosts: spine[0]
+  hosts: spine
   tags: dhcp-filter
 
   vars_files:
@@ -1191,8 +1585,28 @@
     - name: Create dhcp filter
       pn_dhcp_filter:
         pn_action: 'create'
-        pn_name: 'dhcp_filter'
-        pn_trusted_ports: '10,11'
+        pn_name: 'DHCP_Snooping'
+        pn_trusted_ports: '1,5-6,13,17,21'
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete dhcp filter
+# It uses pn_dhcp_filter.py module from the library/ directory
+- name: Create dhcp filter
+  hosts: leaf[0]
+  tags: dhcp-filter
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Create dhcp filter
+      pn_dhcp_filter:
+        pn_action: 'create'
+        pn_name: 'dhcpfilter'
+        pn_trusted_ports: '16,49,53,61,65'
       register: output
     - debug:
         var: output
@@ -1337,13 +1751,13 @@
       with_items:
         - {name: 'arp', rate_limit: '1000'}
         - {name: 'icmp', rate_limit: '1000'}
-        - {name: 'snmp', rate_limit: '1000'}
-        - {name: 'fabric', rate_limit: '1000'}
-        - {name: 'bcast', rate_limit: '1000'}
-        - {name: 'nfs', rate_limit: '1000'}
-        - {name: 'web', rate_limit: '1000'}
-        - {name: 'web-ssl', rate_limit: '1000'}
-        - {name: 'net-api', rate_limit: '1000'}
+#        - {name: 'snmp', rate_limit: '1000'}
+#        - {name: 'fabric', rate_limit: '1000'}
+#        - {name: 'bcast', rate_limit: '1000'}
+#        - {name: 'nfs', rate_limit: '1000'}
+#        - {name: 'web', rate_limit: '1000'}
+#        - {name: 'web-ssl', rate_limit: '1000'}
+#        - {name: 'net-api', rate_limit: '1000'}
 #        - {name: 'ssh', rate_limit: '5000'}
       register: output
     - debug:
