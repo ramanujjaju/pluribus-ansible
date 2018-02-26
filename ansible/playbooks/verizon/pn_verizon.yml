@@ -651,7 +651,7 @@
         pn_leaf_list: "{{ groups['leaf'] | default([])}}"      # List of leaf switches
         pn_tunnel_mode: 'full-mesh'                            # Flag to indicate tunnel mode type Choices: full-mesh or manual.  Default: full-mesh.
         pn_tunnel_loopback_port: '11'                          # Port to configure loopback
-        pn_tunnel_vxlan_id: '6100,2410,2420,2430'              # Specify vxlan id for configuration
+        pn_tunnel_vxlan_id: '6100'                             # Specify vxlan id for configuration
         pn_tunnel_overlay_vlan: '490'                          # Specify overlay vlan
       register: vxlan_config                                   # Variable to hold/register output of the above tasks.
       until: vxlan_config.failed != true                       # If the above code fails it will retry the code
@@ -660,6 +660,98 @@
 
     - pause:
         seconds: 1                                             # Pause playbook execution for specified amount of time.
+
+
+# This task is to configure VXLAN.
+# It uses pn_ztp_vxlan.py module from library/ directory.
+# If the tasks fails then it will retry as specified by retries count.
+
+- name: ZTP VXLAN configuration
+  hosts: leaf[0]
+  tags: vxlan-inter-leaf
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: ZTP Vxlan configuration
+      pn_ztp_vxlan:
+        pn_leaf_list: "{{ groups['leaf'] | default([])}}"      # List of leaf switches
+        pn_tunnel_mode: 'manual'                               # Flag to indicate tunnel mode type Choices: full-mesh or manual.  Default: full-mesh.
+        pn_tunnel_endpoint1: 'hmplabpsq-we50100'
+        pn_tunnel_endpoint2: 'hmplabpsq-we50300'
+        pn_tunnel_loopback_port: '11'                          # Port to configure loopback
+        pn_tunnel_vxlan_id: '2410,2420,2430'                   # Specify vxlan id for configuration
+        pn_tunnel_overlay_vlan: '490'                          # Specify overlay vlan
+      register: vxlan_config                                   # Variable to hold/register output of the above tasks.
+      until: vxlan_config.failed != true                       # If the above code fails it will retry the code
+      retries: 3                                               # This is the retries count
+      delay: 3
+
+    - pause:
+        seconds: 1                                             # Pause playbook execution for specified amount of time.
+
+
+# This task is to configure VXLAN.
+# It uses pn_ztp_vxlan.py module from library/ directory.
+# If the tasks fails then it will retry as specified by retries count.
+
+- name: ZTP VXLAN configuration
+  hosts: leaf[0]
+  tags: vxlan-inter-leaf
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: ZTP Vxlan configuration
+      pn_ztp_vxlan:
+        pn_leaf_list: "{{ groups['leaf'] | default([])}}"      # List of leaf switches
+        pn_tunnel_mode: 'manual'                               # Flag to indicate tunnel mode type Choices: full-mesh or manual.  Default: full-mesh.
+        pn_tunnel_endpoint1: 'hmplabpsq-we50100'
+        pn_tunnel_endpoint2: 'hmplabpsq-we50500'
+        pn_tunnel_loopback_port: '11'                          # Port to configure loopback
+        pn_tunnel_vxlan_id: '2410,2420,2430'                   # Specify vxlan id for configuration
+        pn_tunnel_overlay_vlan: '490'                          # Specify overlay vlan
+      register: vxlan_config                                   # Variable to hold/register output of the above tasks.
+      until: vxlan_config.failed != true                       # If the above code fails it will retry the code
+      retries: 3                                               # This is the retries count
+      delay: 3
+
+    - pause:
+        seconds: 1                                             # Pause playbook execution for specified amount of time.
+
+
+
+# This task is to configure VXLAN.
+# It uses pn_ztp_vxlan.py module from library/ directory.
+# If the tasks fails then it will retry as specified by retries count.
+
+- name: ZTP VXLAN configuration
+  hosts: leaf[2]
+  tags: vxlan-inter-leaf
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: ZTP Vxlan configuration
+      pn_ztp_vxlan:
+        pn_leaf_list: "{{ groups['leaf'] | default([])}}"      # List of leaf switches
+        pn_tunnel_mode: 'manual'                               # Flag to indicate tunnel mode type Choices: full-mesh or manual.  Default: full-mesh.
+        pn_tunnel_endpoint1: 'hmplabpsq-we50300'
+        pn_tunnel_endpoint2: 'hmplabpsq-we50500'
+        pn_tunnel_loopback_port: '11'                          # Port to configure loopback
+        pn_tunnel_vxlan_id: '2410,2420,2430'                   # Specify vxlan id for configuration
+        pn_tunnel_overlay_vlan: '490'                          # Specify overlay vlan
+      register: vxlan_config                                   # Variable to hold/register output of the above tasks.
+      until: vxlan_config.failed != true                       # If the above code fails it will retry the code
+      retries: 3                                               # This is the retries count
+      delay: 3
+
+    - pause:
+        seconds: 1                                             # Pause playbook execution for specified amount of time.
+
 
 
 # This task is to modify admin service.
