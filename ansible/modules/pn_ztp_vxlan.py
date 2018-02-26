@@ -384,7 +384,7 @@ def find_nodes(module, vlan_id):
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(argument_spec=dict(
-        pn_spine_list=dict(required=True, type='list'),
+        pn_spine_list=dict(required=False, type='list'),
         pn_leaf_list=dict(required=True, type='list'),
         pn_tunnel_mode=dict(required=False, type='str', default='full-mesh',
                             choices=['full-mesh', 'manual'],
@@ -398,6 +398,7 @@ def main():
                           )
 
     output1 = ''
+    switch_list = []
     vlan_id = module.params['pn_tunnel_overlay_vlan']
     ports = module.params['pn_tunnel_loopback_port']
 
@@ -407,13 +408,20 @@ def main():
     all_nodes, output = create_tunnel(module, all_nodes, cluster_pair)
     output1 += output
 
-    for switch in module.params['pn_spine_list'] + module.params['pn_leaf_list']:
+    spine_list = module.params['pn_spine_list']
+    leaf_list =  module.params['pn_leaf_list']
+    if spine_list:
+        switch_list += spine_list
+    if leaf_list:
+        switch_list += leaf_list
+
+    for switch in switch_list:
         if ports:
             output1 += add_vxlan_loopback_trunk_ports(module, ports, switch)
 
     message_string = output1
     results = []
-    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+
     for switch in switch_list:
         replace_string = switch + ': '
 
