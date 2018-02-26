@@ -16,8 +16,8 @@
   tasks:
     - name: Auto accept EULA
       pn_ztp_eula_accept:
-        pn_cliusername: "{{ ansible_user }}"                                                                              # Cli username (value comes from cli_vault.yml).
-        pn_clipassword: "{{ ansible_ssh_pass }}"                                                                              # Cli password (value comes from cli_vault.yml).
+        pn_cliusername: "{{ ansible_user }}"                                                                          # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"                                                                      # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] | default([]) }}"                                                          # List of spine switches
         pn_leaf_list: "{{ groups['leaf'] | default([])}}"                                                             # List of leaf switches
         pn_leaf_ips: "{{ groups['leaf'] | default('') | map('extract', hostvars, ['ansible_host']) | join(',') }}"    # IPs of leaf switches separated by comma
@@ -42,24 +42,24 @@
   tasks:
     - name: Disable STP, enable ports and create/join fabric
       pn_ztp_initial_setup:
-        pn_fabric_name: "Vz_HMPLAB_FABRIC1"            # Name of the fabric to create/join.
+        pn_fabric_name: "hmplabpsq-fabric"             # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
         pn_inband_ipv4: '104.255.65.40/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
         pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
-#        pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
+        #pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
         pn_static_setup: 'false'                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
         pn_mgmt_ip_subnet: '16'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
         pn_gateway_ip: '104.254.1.1'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
-#        pn_dns_ip: '104.255.40.101'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
+        #pn_dns_ip: '104.255.40.101'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
         pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
-#        pn_domain_name: 'HEMPLAB.VERIZON.COM'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
-#        pn_ntp_server: '0.us.pool.ntp.org'             # Specify NTP-SERVER value to be assign if pn_static_setup is True.
+        #pn_domain_name: 'HEMPLAB.VERIZON.COM'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+        #pn_ntp_server: '146.13.191.203'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
         pn_stp: True                                   # Specify True if you want to enable STP at the end. Default: False.
       register: ztp_out                                # Variable to hold/register output of the above tasks.
@@ -156,6 +156,28 @@
         pn_scope: 'local'                               # Scope for VLAN - fabric/local/cluster.
         pn_description: 'inbandMGMT'                    # VLAN description.
         pn_vxlan: 6100                                  # VXLAN tunnel mapped to VLAN.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create VLAN.
+# It uses pn_vlan.py module from library/ directory.
+# If the tasks fails then it will retry as specified by retries count.
+- name: VLAN Configuration
+  tags: vlan-244
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_action: 'create'                             # The VLAN action to perform on the switches.
+        pn_vlanid: '244'                                # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'fabric'                              # Scope for VLAN - fabric/local/cluster.
+        pn_description: 'vlan-244'                      # VLAN description.
       register: output
     - debug:
         var: output
@@ -1140,7 +1162,7 @@
       pn_ipv6security_raguard_vlan:
         pn_action: 'add'
         pn_name: 'test'
-        pn_vlans: '100'
+        pn_vlans: '244'
       register: output
     - debug:
         var: output
