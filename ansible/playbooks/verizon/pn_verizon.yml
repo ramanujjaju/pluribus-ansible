@@ -527,6 +527,33 @@
         var: output
 
 
+# This task is to add ospf network
+# It uses pn_vrouter_ospf.py module from library/ directory.
+- name: Add ospf network
+  hosts: spine[0]
+  tags: spine-svi-ospf
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Add spine-svi network to ospf
+      pn_vrouter_ospf:
+        pn_action: "add"                               # vRouter interface command - add/remove/modify.
+        pn_vrouter: "{{ item.vrouter_name }}"          # Name of the vrouter.
+        pn_network: "{{ item.ip }}"                    # IP address for the interface in x.x.x.x format.
+        pn_netmask: "{{ item.netmask }}"               # Network netmask
+        pn_ospf_area: "0"                              # Interface vlan.
+      with_items:
+        - {vrouter_name: 'hmplabpsq-we60100-vrouter', ip: '10.9.9.1', netmask: '24'}
+        - {vrouter_name: 'hmplabpsq-we60200-vrouter', ip: '10.9.10.1', netmask: '24'}
+        - {vrouter_name: 'hmplabpsq-we60300-vrouter', ip: '10.9.11.1', netmask: '24'}
+        - {vrouter_name: 'hmplabpsq-we60400-vrouter', ip: '10.9.12.1', netmask: '24'}
+      register: output
+    - debug:
+        var: output
+
+
 # This task is to configure OSPF.
 # It uses pn_ztp_bgp_ospf.py module from library/ directory.
 - name: Configure OSPF
