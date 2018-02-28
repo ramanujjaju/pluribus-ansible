@@ -524,8 +524,8 @@
         var: output
 
 
- This task is to create vrouter interface.
- It uses pn_vrouter_iface.py module from library/ directory.
+# This task is to create vrouter interface.
+# It uses pn_vrouter_iface.py module from library/ directory.
 - name: vrouter interface modules
   hosts: spine[2]
   tags: spine-svi
@@ -546,8 +546,8 @@
         var: output
 
 
- This task is to create vrouter interface.
- It uses pn_vrouter_iface.py module from library/ directory.
+# This task is to create vrouter interface.
+# It uses pn_vrouter_iface.py module from library/ directory.
 - name: vrouter interface  modules
   hosts: spine[3]
   tags: spine-svi
