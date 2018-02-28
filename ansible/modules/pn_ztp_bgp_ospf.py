@@ -654,6 +654,54 @@ def configure_ospf_bfd(module, vrouter, ip):
         return ''
 
 
+def add_ospf_loopback(module, current_switch):
+    """
+    Method to add loopback network to OSPF
+    :param module: The Ansible module to fetch input parameters.
+    :param current_switch: Switch to add network statements.
+    :return: String describing if loopback network got added to OSPF or not.
+    """
+    global CHANGED_FLAG
+    output = ''
+    cli = pn_cli(module)
+    cli += ' switch %s ' % current_switch
+    clicopy = cli
+    vr_name = current_switch + '-vrouter'
+
+    cli += ' vrouter-loopback-interface-show vrouter-name %s' % vr_name
+    cli += ' format ip,router-if parsable-delim ,'
+    loopback_ip = run_cli(module, cli).strip().split('\n')
+    for addr in loopback_ip:
+        ip1 = addr.split(',')
+        ip = ip1[1]
+        if len(ip.split('.')) == 1:
+            nic = ip1[2]
+            cli = clicopy
+            cli += ' vrouter-ospf6-show vrouter-name %s' % vr_name
+            cli += ' nic %s no-show-headers ' % nic
+            already_added = run_cli(module, cli)
+            if 'Success' in already_added:
+                cli = clicopy
+                cli += ' vrouter-ospf6-add vrouter-name %s' % vr_name
+                cli += ' nic %s' % nic
+                cli += ' ospf6-area %s' % module.params['pn_ospf_v6_area_id']
+                output += run_cli(module, cli)
+        else:
+            l_ip = ip1[1]
+            cli = clicopy
+            cli += ' vrouter-ospf-show vrouter-name %s' % vr_name
+            cli += ' network %s no-show-headers ' % l_ip
+            already_added = run_cli(module, cli).split()
+            if 'Success' in already_added:
+                cli = clicopy
+                cli += ' vrouter-ospf-add vrouter-name %s' % vr_name
+                cli += ' network %s/32' % l_ip
+                cli += ' ospf-area %s' % module.params['pn_ospf_v4_area_id']
+                output += run_cli(module, cli)
+
+    return output
+
+
 def add_ospf_neighbor(module, current_switch):
     """
     Method to add ospf_neighbor to the vrouters.
@@ -1125,6 +1173,7 @@ def main():
         message += add_bgp_neighbor(module, dict_bgp_as)
         message += assign_ibgp_interface(module, dict_bgp_as)
     elif routing_protocol == 'ospf':
+        message += add_ospf_loopback(module, current_switch)
         message += add_ospf_neighbor(module, current_switch)
         message += add_ospf_redistribute(module, current_switch)
         message += make_interface_passive(module, current_switch)
