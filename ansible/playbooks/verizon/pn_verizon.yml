@@ -1499,6 +1499,29 @@
         var: output
 
 
+# This task is for system flow setting.
+# It uses pn_sys_flow_settings.py module from library/ directory.
+- name: System flow setting
+  hosts: spine, leaf
+  tags: sys-flow-setting
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: System flow setting
+      pn_sys_flow_setting:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "modify"                            # Specify the action. choices=['modify']
+        pn_num_ipv6_128b_entries: "256"                # Specify pn_num_ipv6_128b_entries value.
+        pn_nvos_reboot: False                          # Specify reboot required or not. We would keep False since it will be rebooting in next module.
+      register: output
+    - debug:
+        var: output
+
+
 # This task is to enable cpu class.
 # It uses pn_system_ettings.py module from library/ directory.
 - name: Enable cpu class 
