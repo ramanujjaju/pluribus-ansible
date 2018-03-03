@@ -48,7 +48,7 @@
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
         pn_inband_ipv4: '104.255.62.40/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
-        pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
+        #pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
         #pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
@@ -69,6 +69,106 @@
     - pause:
         seconds: 2                                     # Pause playbook execution for specified amount of time.
 
+
+# This task is to create/modify switch configs.
+# It uses pn_switch_setup.py module from library/ directory.
+- name: Modify Banner
+  hosts: spine,leaf
+  tags: banner
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+   - name: Modify switch banner
+     pn_switch_setup:
+       pn_action: modify
+       pn_banner: |
+         "*********************** NOTICE ***********************
+         This system is intended to be used solely by authorized
+         users in the course of legitimate corporate business.
+         Users are monitored to the extent necessary to properly
+         administer the system, to identify unauthorized users
+         or users operating beyond their proper authority, and to
+         investigate improper access or use. By accessing this
+         system, you are consenting to this monitoring.
+         *********************** NOTICE ***********************"
+     register: output
+   - debug:
+       var: output
+
+
+# This task is for system flow setting.
+# It uses pn_sys_flow_settings.py module from library/ directory.
+- name: Syetem flow setting
+  hosts: spine, leaf
+  tags: sys-flow-settings
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: System flow setting
+      pn_sys_flow_setting:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "modify"                            # Specify the action. choices=['modify']
+        pn_num_ipv6_128b_entries: "4000"                # Specify pn_num_ipv6_128b_entries value.
+        pn_reboot: False                               # Specify reboot required or not. We would keep False since it will be rebooting in next module.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to enable cpu class.
+# It uses pn_system_ettings.py module from library/ directory.
+- name: Enable cpu class 
+  hosts: spine, leaf
+  tags: system-settings
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Enable cpu class
+      pn_system_settings:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "modify"                            # Specify the action. choices=['modify']
+        pn_cpu_class_enable: True                      # Specify to enable/disable cpu class.
+        pn_optimize_nd: True
+        pn_optimize_arps: True
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete/modify cpu class.
+# It uses pn_cpu_class.py module from library/ directory.
+- name: Modify cpu class
+  hosts: spine,leaf
+  tags: cpu-class
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Modify cpu class
+      pn_cpu_class: pn_action="modify" pn_name={{ item.name }} pn_hog_protect={{ item.hog_protect }}
+      with_items:
+        - {name: 'ospf', hog_protect: 'enable'}
+        - {name: 'bgp', hog_protect: 'enable'}
+        - {name: 'lacp', hog_protect: 'enable'}
+        - {name: 'vrrp', hog_protect: 'enable'}
+        - {name: 'local-subnet', hog_protect: 'enable'}
+        - {name: 'stp', hog_protect: 'enable'}
+        - {name: 'bfd', hog_protect: 'enable'}
+        - {name: 'arp', hog_protect: 'enable'}
+      register: output
+    - debug:
+        var: output
 
 
 # This task is to create/delete/modify trunk configs.
@@ -137,6 +237,48 @@
 
 
 
+# This task is to create/delete/modify trunk configs.
+# It uses pn_trunk.py module from library/ directory.
+- name:  create trunk
+  hosts: leaf[0]
+  tags: trunk
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: create trunk
+      pn_trunk:
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
+        pn_name: "501topica8"                          # Specify the name of trunk.
+        pn_ports: "21"                                # Specify the ports.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete/modify trunk configs.
+# It uses pn_trunk.py module from library/ directory.
+- name:  create trunk
+  hosts: leaf[1]
+  tags: trunk
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: create trunk
+      pn_trunk:
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
+        pn_name: "502topica8"                          # Specify the name of trunk.
+        pn_ports: "21"                                # Specify the ports.
+      register: output
+    - debug:
+        var: output
+
+
 # This task is to create/delete/modify vlag configs.
 # It uses pn_vlag.py module from library/ directory.
 - name:  create vlag
@@ -151,8 +293,8 @@
       pn_vlag:
         pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
         pn_name: "PN-to-P8-sw1"                           # Specify the name of vlag.
-        pn_port: "21"                          # Specify the port of vlag.
-        pn_peer_port: "21"                     # Specify the peer port.
+        pn_port: "501topica8"                          # Specify the port of vlag.
+        pn_peer_port: "502topica8"                     # Specify the peer port.
         pn_peer_switch: "hmplabpsq-we50200"
       register: output
     - debug:
@@ -678,47 +820,11 @@
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[4],leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.64', netmask: '26', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[4], leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::12', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::13', netmask: '128', action: 'add'} 
@@ -726,6 +832,22 @@
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b015::0', netmask: '64', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::38', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::3c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.62.160', netmask: '27', action: 'add'}
       register: output
     - debug:
         var: output
@@ -735,208 +857,71 @@
 # It uses pn_vrouter_bgp_network.py module from library/ directory.
 - name: vrouter bgp network module
   hosts: leaf[4], leaf[5]
-  tags: bgp-network
+  tags: bgp-network-summary
 
   vars_files:
   - cli_vault.yml
 
   tasks:
     - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
+      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action='add'
       with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b015::0', netmask: '64', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::38', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::3c', netmask: '126', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[4]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '126', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[4]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '126', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.1', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.2', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.3', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.4', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.5', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.6', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.7', netmask: '32', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.8', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.9', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.10', netmask: '32', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.64', netmask: '26', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::12', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::13', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::17', netmask: '128', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b015::0', netmask: '64', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::38', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::3c', netmask: '126', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '126', action: 'add'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to add loopback ip to bgp network.
-# It uses pn_vrouter_bgp_network.py module from library/ directory.
-- name: vrouter bgp network module
-  hosts: leaf[5]
-  tags: bgp-network
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: vrouter bgp network add functionality
-      pn_vrouter_bgp_network: pn_vrouter_name={{ item.vrouter }} pn_network={{ item.ip }} pn_netmask={{ item.netmask }} pn_action={{ item.action }}
-      with_items:
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.76', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.20', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.21', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.22', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.23', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.24', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.25', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.100', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.101', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.102', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.103', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.104', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.105', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.106', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.107', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.108', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.109', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.110', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.111', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.112', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.113', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.114', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.115', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.65', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.67', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.68', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.69', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.70', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.71', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.72', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.73', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.74', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.75', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.77', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.78', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.79', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.80', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.81', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.82', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.83', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.84', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.85', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.86', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.87', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.88', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.89', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.90', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.91', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.92', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.93', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.94', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.95', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.96', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.97', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.98', netmask: '31'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.99', netmask: '31'}
       register: output
     - debug:
         var: output
@@ -1319,8 +1304,8 @@
         pn_user_name: "VINETrw"                         # snmp user name.      
         pn_auth: True                                   # snmp authentication required.
         pn_priv: True                                   # snmp privileges.
-        pn_auth_pass: 'baseball'                        # snmp authentication password.
-        pn_priv_pass: 'baseball'                        # snmp privilege password
+        pn_auth_pass: 'football'                        # snmp authentication password.
+        pn_priv_pass: 'football'                        # snmp privilege password
       register: output
     - debug:
         var: output
@@ -1375,7 +1360,7 @@
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
         pn_community: "baseball"                        # snmp community type.
         pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
-        pn_dest_host: "104.254.40.101"                  # snmp dest host.
+        pn_dest_host: "104.255.40.101"                  # snmp dest host.
       register: output
     - debug:
         var: output
@@ -1441,7 +1426,7 @@
       pn_role:
         pn_cliswitch: "{{ inventory_hostname }}"      # Name of the switch on which this task is currently getting executed.
         pn_action: "create"                           # Specify the action of role. choices=['create', 'modify', 'delete']
-        pn_name: "abcd"                               # Specify the name of the role.
+        pn_name: "enss"                               # Specify the name of the role.
         pn_scope: "local"                             # Specify the scope of the role. choices=choices=['local', 'fabric']
       register: output
     - debug:
@@ -1464,7 +1449,7 @@
         pn_action: "create"                             # admin-syslog configuration command: create/delete/modify.
         pn_name: "vzsyslog"                             # Specify the name of the admin-syslog.
         pn_scope: "fabric"                              # Specify the name of the scope. local/fabric
-        pn_host: "146.13.191.77"                        # Specify host ip.
+        pn_host: "104.255.40.101"                        # Specify host ip.
         pn_message_format: 'structured'                 # structured/legacy
       register: output
     - debug:
@@ -1482,7 +1467,10 @@
 
   tasks:
     - name: Modify switch inband ipv6
-      pn_switch_setup: pn_action="modify" pn_cliswitch={{ item.pn_cliswitch }} pn_in_band_ip6={{ item.ip }} 
+      pn_switch_setup:
+        pn_action: "modify"
+        pn_cliswitch: "{{ item.pn_cliswitch }}"
+        pn_in_band_ip6: "{{ item.ip }}"
       with_items:
         - {pn_cliswitch: 'hmplabpsq-we60100', ip: '2620:0:167f:b010::10/64'}
         - {pn_cliswitch: 'hmplabpsq-we60200', ip: '2620:0:167f:b010::11/64'}
@@ -1494,76 +1482,6 @@
         - {pn_cliswitch: 'hmplabpsq-we50400', ip: '2620:0:167f:b010::17/64'}
         - {pn_cliswitch: 'hmplabpsq-we50500', ip: '2620:0:167f:b010::18/64'}
         - {pn_cliswitch: 'hmplabpsq-we50600', ip: '2620:0:167f:b010::19/64'}
-      register: output
-    - debug:
-        var: output
-
-
-# This task is for system flow setting.
-# It uses pn_sys_flow_settings.py module from library/ directory.
-- name: System flow setting
-  hosts: spine, leaf
-  tags: sys-flow-setting
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: System flow setting
-      pn_sys_flow_setting:
-        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
-        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
-        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                            # Specify the action. choices=['modify']
-        pn_num_ipv6_128b_entries: "256"                # Specify pn_num_ipv6_128b_entries value.
-        pn_nvos_reboot: False                          # Specify reboot required or not. We would keep False since it will be rebooting in next module.
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to enable cpu class.
-# It uses pn_system_ettings.py module from library/ directory.
-- name: Enable cpu class 
-  hosts: spine, leaf
-  tags: system-settings
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Enable cpu class
-      pn_system_settings:
-        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
-        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
-        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                            # Specify the action. choices=['modify']
-        pn_cpu_class_enable: True                      # Specify to enable/disable cpu class.
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to create/delete/modify cpu class.
-# It uses pn_cpu_class.py module from library/ directory.
-- name: Modify cpu class
-  hosts: spine[0]
-  tags: cpu-class
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Modify cpu class
-      pn_cpu_class: pn_action="modify" pn_name={{ item.name }} pn_hog_protect={{ item.hog_protect }}
-      with_items:
-        - {name: 'ospf', hog_protect: 'enable'}
-        - {name: 'bgp', hog_protect: 'enable'}
-        - {name: 'lacp', hog_protect: 'enable'}
-        - {name: 'vrrp', hog_protect: 'enable'}
-        - {name: 'local-subnet', hog_protect: 'enable'}
-        - {name: 'stp', hog_protect: 'enable'}
-        - {name: 'bfd', hog_protect: 'enable'}
       register: output
     - debug:
         var: output
@@ -1664,16 +1582,15 @@
       pn_dhcp_filter:
         pn_action: 'create'
         pn_name: 'DHCP_Snooping'
-        pn_trusted_ports: '1,5-6,13,17,21'
+        pn_trusted_ports: "1,5,9,13,17,21"
       register: output
     - debug:
         var: output
 
-
 # This task is to create/delete dhcp filter
 # It uses pn_dhcp_filter.py module from the library/ directory
 - name: Create dhcp filter
-  hosts: leaf[0]
+  hosts: leaf[0],leaf[1]
   tags: dhcp-filter
 
   vars_files:
@@ -1683,11 +1600,51 @@
     - name: Create dhcp filter
       pn_dhcp_filter:
         pn_action: 'create'
-        pn_name: 'dhcpfilter'
-        pn_trusted_ports: '16,49,53,61,65'
+        pn_name: 'DHCP_Snooping'
+        pn_trusted_ports: "21,49,53,57,61,65,69"
       register: output
     - debug:
         var: output
+
+# This task is to create/delete dhcp filter
+# It uses pn_dhcp_filter.py module from the library/ directory
+- name: Create dhcp filter
+  hosts: leaf[2],leaf[3]
+  tags: dhcp-filter
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Create dhcp filter
+      pn_dhcp_filter:
+        pn_action: 'create'
+        pn_name: 'DHCP_Snooping'
+        pn_trusted_ports: "49,53,57,61,65,69"
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete dhcp filter
+# It uses pn_dhcp_filter.py module from the library/ directory
+- name: Create dhcp filter
+  hosts: leaf[4],leaf[5]
+  tags: dhcp-filter
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Create dhcp filter
+      pn_dhcp_filter:
+        pn_action: 'create'
+        pn_name: 'DHCP_Snooping'
+        pn_trusted_ports: "1,2,3,49,53,57,61,65,69"
+      register: output
+    - debug:
+        var: output
+
 
 
 # This task is to create/delete ipv6security raguard
@@ -1714,64 +1671,67 @@
 
 # This task is to add/remove ports to/from ipv6security raguard
 # It uses pn_ipv6security_raguard_port.py module from the library/ directory
-- name: Add ipv6security raguard ports
-  hosts: spine[0]
-  tags: ipv6security-raguard-port
+#- name: Add ipv6security raguard ports
+#  hosts: spine[0]
+#  tags: ipv6security-raguard-port
 
-  vars_files:
-  - cli_vault.yml
+#  vars_files:
+#  - cli_vault.yml
 
-  tasks:
-    - name: Add ipv6security raguard ports
-      pn_ipv6security_raguard_port:
-        pn_action: 'add'
-        pn_name: 'test'
-        pn_ports: '10'
-      register: output
-    - debug:
-        var: output
+#  tasks:
+#    - name: Add ipv6security raguard ports
+#      pn_ipv6security_raguard_port:
+#        pn_action: 'add'
+#        pn_name: 'test'
+#        pn_ports: '10'
+#      register: output
+#    - debug:
+#        var: output
 
 
 # This task is to add/remove vlans to/from ipv6security raguard
 # It uses pn_ipv6security_raguard_vlan.py module from the library/ directory
-- name: Add ipv6security raguard vlans
-  hosts: spine[0]
-  tags: ipv6security-raguard-vlan
+#- name: Add ipv6security raguard vlans
+#  hosts: spine[0]
+#  tags: ipv6security-raguard-vlan
+
+#  vars_files:
+#  - cli_vault.yml
+
+#  tasks:
+#    - name: Add ipv6security raguard vlans
+#      pn_ipv6security_raguard_vlan:
+#        pn_action: 'add'
+#        pn_name: 'test'
+#        pn_vlans: '244'
+#      register: output
+#    - debug:
+#        var: output
+
+
+# This task is to add/remove vrouter packet relay
+# It uses pn_vrouter_packet_relay.py module from the library/ directory
+- name: Add vrouter packet relay
+  hosts: leaf[0]
+  tags: vrouter-packet-relay
 
   vars_files:
   - cli_vault.yml
 
   tasks:
-    - name: Add ipv6security raguard vlans
-      pn_ipv6security_raguard_vlan:
+    - name: Add vrouter packet relay
+      pn_vrouter_packet_relay:
         pn_action: 'add'
-        pn_name: 'test'
-        pn_vlans: '244'
+        pn_vrouter_name: "{{ item.vrouter }}"
+        pn_forward_ip: "{{ item.forward_ip }}"
+        pn_forward_proto: 'dhcp'
+        pn_nic: "{{ item.nic }}"
+      with_items:
+        - {vrouter: 'hmplabpsq-we50100-vrouter', forward_ip: '104.255.40.101', nic: 'eth0.244'}
+        - {vrouter: 'hmplabpsq-we50200-vrouter', forward_ip: '104.255.40.101', nic: 'eth3.244'}
       register: output
     - debug:
         var: output
-
-
-# This task is to add/remove vrouter packet relay
-# It uses pn_vrouter_packet_relay.py module from the library/ directory
-#- name: Add vrouter packet relay
-#  hosts: spine[0]
-#  tags: vrouter-packet-relay
-#
-#  vars_files:
-#  - cli_vault.yml
-#
-#  tasks:
-#    - name: Add vrouter packet relay
-#      pn_vrouter_packet_relay:
-#        pn_action: 'add'
-#        pn_vrouter_name: 'hmplabpsq-60100-vrouter'
-#        pn_forward_ip: '172.16.1.1'
-#        pn_forward_proto: 'dhcp'
-#        pn_nic: 'eth0'
-#      register: output
-#    - debug:
-#        var: output
 
 
 # This task is to modify vflow table profile
@@ -1842,3 +1802,36 @@
         var: output
 
 
+# This task is to create/delete/modify aaa-tacacs.
+# It uses pn_aaa_tacacs.py module from library/ directory.
+- name: aaa tacacs module
+  hosts: spine[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: aaa-tacacs functionality
+      pn_aaa_tacacs:
+        pn_action: "create"                             #aaa tacacs configuration command: create/delete/modify.
+        pn_scope: "fabric"                               # local/fabric
+        pn_name: "tacacs"
+        pn_server: "146.13.191.77"
+        pn_port: "49"
+        pn_secret: "{{ ansible_ssh_pass }}"
+        #pn_priority:
+        pn_authen_method: "pap"                              # pap/chap/ms-chap
+        pn_service:
+        #pn_service_shell:
+        #pn_service_vtysh:
+        pn_authen: True
+        #pn_authen_local: True
+        pn_sess_acct: True
+        pn_cmd_acct: True
+        #pn_acct_local: True
+        #pn_author_local: True
+        pn_cmd_author: True
+        pn_sess_author: True
+      register: output
+    - debug:
+        var: output
