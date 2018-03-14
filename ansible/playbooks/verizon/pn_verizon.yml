@@ -83,6 +83,7 @@
    - name: Modify switch banner
      pn_switch_setup:
        pn_action: modify
+       pn_timezone: "America/New_york"
        pn_banner: |
          "*********************** NOTICE ***********************
          This system is intended to be used solely by authorized
@@ -1582,7 +1583,7 @@
       pn_dhcp_filter:
         pn_action: 'create'
         pn_name: 'DHCP_Snooping'
-        pn_trusted_ports: "1,5,9,13,17,21"
+        pn_trusted_ports: "0,1,5,9,13,17,21"
       register: output
     - debug:
         var: output
@@ -1601,7 +1602,7 @@
       pn_dhcp_filter:
         pn_action: 'create'
         pn_name: 'DHCP_Snooping'
-        pn_trusted_ports: "21,49,53,57,61,65,69"
+        pn_trusted_ports: "0,21,49,53,57,61,65,69"
       register: output
     - debug:
         var: output
@@ -1620,7 +1621,7 @@
       pn_dhcp_filter:
         pn_action: 'create'
         pn_name: 'DHCP_Snooping'
-        pn_trusted_ports: "49,53,57,61,65,69"
+        pn_trusted_ports: "0,49,53,57,61,65,69"
       register: output
     - debug:
         var: output
@@ -1640,7 +1641,7 @@
       pn_dhcp_filter:
         pn_action: 'create'
         pn_name: 'DHCP_Snooping'
-        pn_trusted_ports: "1,2,3,49,53,57,61,65,69"
+        pn_trusted_ports: "0,1,2,3,49,53,57,61,65,69"
       register: output
     - debug:
         var: output
@@ -1832,6 +1833,28 @@
         #pn_author_local: True
         pn_cmd_author: True
         pn_sess_author: True
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete/modify user.
+# It uses pn_user.py module from library/ directory.
+- name: "Configure user"
+  hosts: spine[0]
+  tags: user-create
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: "Configure user"
+      pn_user:
+        pn_action: "create"
+        pn_scope: "fabric"
+        pn_initial_role: "network-admin"
+        pn_password: "{{ ansible_ssh_pass }}"
+        pn_name: "enss"
       register: output
     - debug:
         var: output
