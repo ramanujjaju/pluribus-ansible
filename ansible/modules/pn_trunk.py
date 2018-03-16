@@ -50,9 +50,13 @@ options:
     description:
       - Trunk ID number of physical interface.
     type: str
-  pn_ports:
+  pn_physical_ports:
     description:
       - Physical ports list.
+    type: str
+  pn_bezel_ports:
+    description:
+      - Bezel ports list.
     type: str
   pn_speed:
     description:
@@ -226,6 +230,23 @@ def check_cli(module):
         TRUNK_ID_EXISTS = True if trunk_id in out else False
 
 
+def get_ports(module):
+    cli = pn_cli(module, switch_local=True)
+    phy_ports = module.params['pn_physical_ports']
+    bezel_ports = module.params['pn_bezel_ports']
+
+    if phy_ports:
+        return phy_ports
+
+    if bezel_ports:
+        cli += ' port-show bezel-port %s format port, no-show-headers ' % (bezel_ports)
+        cli = shlex.split(cli)
+        out = module.run_command(cli)[1]
+        if out is not None:
+            out = out.split()
+            return ','.join(out)
+
+
 def run_cli(module, cli):
     """
     This method executes the cli command on the target node(s) and returns the
@@ -272,7 +293,8 @@ def main():
                         choices=['create', 'delete', 'modify']),
             pn_name=dict(required=True, type='str'),
             pn_trunk_id=dict(type='str'),
-            pn_ports=dict(type='str'),
+            pn_bezel_ports=dict(type='str'),
+            pn_physical_ports=dict(type='str'),
             pn_speed=dict(type='str',
                           choices=['disable', '10m', '100m', '1g', '2.5g',
                                    '10g', '25g', '40g', '50g', '100g']),
@@ -305,7 +327,8 @@ def main():
             pn_allowed_tpid=dict(type='bool',
                                  choices=['q-in-q', 'q-in-q-old']),
             pn_fabric_guard=dict(type='bool')
-        )
+        ),
+        mutually_exclusive=["pn_physical_ports", "pn_bezel_ports"]
     )
 
     # Accessing the arguments
@@ -314,7 +337,8 @@ def main():
     command = ' trunk-' + action
     name = module.params['pn_name']
     trunk_id = module.params['pn_trunk_id']
-    ports = module.params['pn_ports']
+    bezel_ports = module.params['pn_bezel_ports']
+    physical_ports = module.params['pn_physical_ports']
     speed = module.params['pn_speed']
     egress_rate_limit = module.params['pn_egress_rate_limit']
     autoneg = module.params['pn_autoneg']
@@ -346,6 +370,8 @@ def main():
     # Building the CLI command string
     cli = pn_cli(module, switch)
     check_cli(module)
+    ports = get_ports(module)
+
     cli += ' %s name %s ' % (command, name)
 
     if action == 'delete':
