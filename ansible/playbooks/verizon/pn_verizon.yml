@@ -581,11 +581,11 @@
         pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_addr_type: 'ipv4_ipv6'                       # The type of address scheme to be used. Options: ipv4/dual_stack.
-        pn_net_address_ipv4: "104.255.61.68"            # Ipv4 Network address required to calculate link IPs for layer3 fabric.
+        pn_ipv4_start_address: "104.255.61.68"            # Ipv4 Network address required to calculate link IPs for layer3 fabric.
         pn_cidr_ipv4: "26"                              # Ipv4 CIDR required to calculate link IPs for layer3 fabric.
         pn_subnet_ipv4: "31"                            # Ipv4 Subnet mask required to calculate link IPs for layer3 fabric.
         pn_if_nat_realm: 'internal'                     # Type of if_nat_realm. choices=['internal', 'external'], default='internal'
-        pn_net_address_ipv6: '2620:0000:167F:b001::40'  # Ipv6 Network address required to calculate link IPs for layer3 fabric.
+        pn_ipv6_start_address: '2620:0000:167F:b001::40'  # Ipv6 Network address required to calculate link IPs for layer3 fabric.
         pn_cidr_ipv6: "112"                             # ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
         pn_subnet_ipv6: "127"                           # Ipv6 Subnet mask required to calculate link IPs for layer3 fabric.
         pn_bfd: True                                  # Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
