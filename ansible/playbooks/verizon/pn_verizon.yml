@@ -828,7 +828,7 @@
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::10', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::11', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::12', netmask: '128', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::13', netmask: '128', action: 'add'} 
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::13', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::14', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::15', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::16', netmask: '128', action: 'add'}
@@ -836,18 +836,33 @@
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::18', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b000::19', netmask: '128', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b015::0', netmask: '64', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::38', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::3c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '126', action: 'add'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '126', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::54', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::48', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::58', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::40', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::50', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::60', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::68', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4a', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::42', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::52', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::62', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5a', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::6a', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4e', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::56', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::46', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5e', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::66', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::6e', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::4c', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::64', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::44', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::5c', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::6c', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::a2', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::a4', netmask: '127', action: 'add'}
+        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '2620:0:167f:b001::a0', netmask: '127', action: 'add'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.62.160', netmask: '27', action: 'add'}
       register: output
     - debug:
@@ -869,60 +884,31 @@
       with_items:
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.76', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.20', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.21', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.22', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.23', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.24', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '10.10.100.25', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.100', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.101', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.102', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.103', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.104', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.105', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.106', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.107', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.108', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.109', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.110', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.111', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.112', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.113', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.114', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.115', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.65', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.67', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.68', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.69', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.70', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.71', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.72', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.73', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.74', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.75', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.77', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.78', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.79', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.80', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.81', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.82', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.83', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.84', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.85', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.86', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.87', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.88', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.89', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.90', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.91', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.92', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.93', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.94', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.95', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.96', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.97', netmask: '31'}
         - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.98', netmask: '31'}
-        - {vrouter: '{{ inventory_hostname }}-vrouter', ip: '104.255.61.99', netmask: '31'}
       register: output
     - debug:
         var: output
@@ -991,8 +977,8 @@
         pn_soft_reconfig: True
         pn_multiprotocol: "ipv6-unicast"
       with_items:
-        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '2610:0:167f:b001::a3', remote: '65542'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '2610:0:167f:b001::a2', remote: '65542'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '2610:0:167f:b001::a5', remote: '65542'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '2610:0:167f:b001::a4', remote: '65542'}
       register: output
     - debug:
         var: output
@@ -1014,8 +1000,8 @@
         pn_remote_as: "{{ item.remote }}"
         pn_soft_reconfig: True
       with_items:
-        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '10.10.100.23', remote: '65542'}
-        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '10.10.100.22', remote: '65542'}
+        - {vrouter: 'hmplabpsq-we50500-vrouter', neighbor: '10.10.100.25', remote: '65542'}
+        - {vrouter: 'hmplabpsq-we50600-vrouter', neighbor: '10.10.100.24', remote: '65542'}
       register: output
     - debug:
         var: output
