@@ -528,118 +528,181 @@ def enable_web_api(module):
     run_cli(module, cli)
 
 
-def toggle(module, ports, local_ports, toggle_speed, port_speed, max_ports):
+def toggle(module, curr_switch, toggle_ports, toggle_speed, port_speed, splitter_ports, quad_ports):
     """
-    Method to toggle 40g/100g ports to 10g/25g ports.
+    Method to toggle ports for topology discovery
     :param module: The Ansible module to fetch input parameters.
     :return: The output messages for assignment.
+    :param curr_switch on which we run toggle.
+    :param toggle_ports to be toggled.
+    :param toggle_speed to which ports to be toggled.
+    :param splitter_ports are splitter ports
     """
     output = ''
-    splitter_ports = []
     cli = pn_cli(module)
     clicopy = cli
 
-    ports_to_modify = list(set(ports) - set(local_ports))
-
-    for port in ports_to_modify:
-        next_port = str(int(port) + 1)
+    for speed in toggle_speed:
+        if int(port_speed.strip('g'))/int(speed.strip('g')) >= 4:
+            is_splittable = True
+        else:
+            is_splittable = False
         cli = clicopy
-        cli += ' switch-local'
-        cli += ' port-show port %s format bezel-port' % next_port
-        cli += ' no-show-headers'
-        bezel_port = run_cli(module, cli).split()[0]
+        cli += 'switch %s lldp-show format local-port ' % curr_switch
+        cli += 'parsable-delim ,'
+        local_ports = run_cli(module, cli).split()
 
-        if '.2' in bezel_port:
-            end_port = int(port) + 3
-            range_port = port + '-' + str(end_port)
+        _undiscovered_ports = sorted(list(set(toggle_ports) - set(local_ports)),
+                                     key=lambda x: int(x))
+        non_splittable_ports = []
+        undiscovered_ports = []
 
+        for _port in _undiscovered_ports:
+            if splitter_ports.get(_port, 0) == 1:
+                undiscovered_ports.append("%s-%s" % (_port, int(_port)+3))
+            elif splitter_ports.get(_port, 0) == 0:
+                undiscovered_ports.append(_port)
+            else:
+                # Skip intermediate splitter ports
+                continue
+            if not is_splittable:
+                non_splittable_ports.append(_port)
+        undiscovered_ports = ",".join(undiscovered_ports)
+
+        if not undiscovered_ports:
+            continue
+
+        cli = clicopy
+        cli += 'switch %s port-config-modify port %s ' % (curr_switch, undiscovered_ports)
+        cli += 'disable'
+        run_cli(module, cli)
+
+        if non_splittable_ports:
+            non_splittable_ports = ",".join(non_splittable_ports)
             cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % port
-            cli += ' disable '
-            output += 'port ' + port + ' disabled'
-            output += run_cli(module, cli)
-
+            cli += 'switch %s port-config-modify ' % curr_switch
+            cli += 'port %s ' % non_splittable_ports
+            cli += 'speed %s enable' % speed
+            run_cli(module, cli)
+        else:
             cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % port
-            cli += ' speed %s ' % toggle_speed
-            output += 'port ' + port + ' converted to %s' % toggle_speed
-            output += run_cli(module, cli)
+            cli += 'switch %s port-config-modify ' % curr_switch
+            cli += 'port %s ' % undiscovered_ports
+            cli += 'speed %s enable' % speed
+            run_cli(module, cli)
 
-            cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' enable '
-            output += 'port range_port ' + range_port + '  enabled'
-            output += run_cli(module, cli)
+        time.sleep(10)
 
-            splitter_ports.append(range(int(port), int(port)+4))
+    # Revert undiscovered ports back to their original speed
+    cli = clicopy
+    cli += 'switch %s lldp-show format local-port ' % curr_switch
+    cli += 'parsable-delim ,'
+    local_ports = run_cli(module, cli).split()
+    _undiscovered_ports = sorted(list(set(toggle_ports) - set(local_ports)),
+                                 key=lambda x: int(x))
+    disable_ports = []
+    undiscovered_ports = []
+    for _port in _undiscovered_ports:
+        if _port in quad_ports:
+            disable_ports.append(str(_port))
+            # dont add to undiscovered ports
+        elif splitter_ports.get(_port, 0) == 1:
+            disable_ports.append("%s-%s" % (_port, int(_port)+3))
+            undiscovered_ports.append(_port)
+        elif splitter_ports.get(_port, 0) == 0:
+            disable_ports.append(str(_port))
+            undiscovered_ports.append(_port)
+        else:
+            # Skip intermediate splitter ports
+            pass
 
-    time.sleep(10)
+    disable_ports = ",".join(disable_ports)
+    if disable_ports:
+        cli = clicopy
+        cli += 'switch %s port-config-modify port %s disable' % (curr_switch, disable_ports)
+        run_cli(module, cli)
+
+    undiscovered_ports = ",".join(undiscovered_ports)
+    if not undiscovered_ports:
+        return
 
     cli = clicopy
-    cli += ' switch-local lldp-show format local-port no-show-headers '
-    lldp_local_ports = run_cli(module, cli).split()
-    active_ports = list(set(lldp_local_ports) - set(local_ports))
-
-    if splitter_ports:
-        for ports_list in splitter_ports[:]:
-            for port in active_ports:
-                if int(port) in ports_list:
-                    if ports_list in splitter_ports:
-                        splitter_ports.remove(ports_list)
-
-    for port_list in splitter_ports:
-        first_port = port_list[0]
-        for port in port_list:
-            if int(port) > len(max_ports):
-                continue
-            else:
-                cli = clicopy
-                cli += ' switch-local port-config-modify port %s ' % port
-                cli += ' disable '
-                output += run_cli(module, cli)
-                output += 'port ' + str(port) + '  disabled'
-        cli = clicopy
-        cli += ' switch-local port-config-modify port %s ' % first_port
-        cli += ' speed %s ' % port_speed
-        output += run_cli(module, cli)
-        output += 'port ' + str(first_port) + ' is now %s ' % port_speed
+    cli += 'switch %s port-config-modify ' % curr_switch
+    cli += 'port %s ' % undiscovered_ports
+    cli += 'speed %s enable' % port_speed
+    run_cli(module, cli)
+    output += '%s: Toggle completed successfully ' % curr_switch
 
     return output
 
 
-def toggle_local(module):
+def toggle_ports(module, curr_switch):
     """
-    Method to toggle 40g/100g ports to 10g/25g ports.
+    Method to discover the toggle ports.
     :param module: The Ansible module to fetch input parameters.
-    :return: The output messages for assignment.
+    :param curr_switch on which toggle discovery happens.
     """
-    output = ''
-    ports_40g, ports_100g = [], []
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' switch-local lldp-show format local-port no-show-headers '
-    local_ports = run_cli(module, cli).split()
+    g_toggle_ports = {
+        '25g': {'ports': [], 'speeds': ['10g']},
+        '40g': {'ports': [], 'speeds': ['10g']},
+        '100g': {'ports': [], 'speeds': ['10g', '25g', '40g']}
+    }
+    ports_25g = []
+    ports_40g = []
+    ports_100g = []
 
-    cli = clicopy
-    cli += ' switch-local port-config-show format port,speed parsable-delim , '
-    max_ports = run_cli(module, cli).split('\n')
+    cli += 'switch %s port-config-show format port,speed ' % curr_switch
+    cli += 'parsable-delim ,'
+    max_ports = run_cli(module, cli).split()
 
+    all_next_ports = []
     for port_info in max_ports:
         if port_info:
-            port_info = port_info.strip().split(',')
-            port, speed = port_info[0], port_info[1]
-            if '40g' in speed:
-                ports_40g.append(port)
-            if '100g' in speed:
-                ports_100g.append(port)
+            port, speed = port_info.strip().split(',')
+            all_next_ports.append(str(int(port)+1))
+            if g_toggle_ports.get(speed, None):
+                g_toggle_ports[speed]['ports'].append(port)
 
-    if ports_40g:
-        output += toggle(module, ports_40g, local_ports, '10g', '40g', max_ports)
+    # Get info on splitter ports
+    g_splitter_ports = {}
+    all_next_ports = ','.join(all_next_ports)
+    cli = clicopy
+    cli += 'switch %s port-show port %s format ' % (curr_switch, all_next_ports)
+    cli += 'port,bezel-port parsable-delim ,'
+    splitter_info = run_cli(module, cli).split()
 
-    if ports_100g:
-        output += toggle(module, ports_100g, local_ports, '25g', '100g', max_ports)
+    for sinfo in splitter_info:
+        if not sinfo:
+            break
+        _port, _sinfo = sinfo.split(',')
+        _port = int(_port)
+        if '.2' in _sinfo:
+            for i in range(4):
+                g_splitter_ports[str(_port-1 + i)] = 1 + i
 
-    return output
+    # Get info on Quad Ports
+    g_quad_ports = {'25g': []}
+    cli = clicopy
+    cli += 'switch %s switch-info-show format model, layout horizontal ' % curr_switch
+    cli += 'parsable-delim ,'
+    model_info = run_cli(module, cli).split()
+
+    for modinfo in model_info:
+        if not modinfo:
+            break
+        model = modinfo
+        if model == "ACCTON-AS7316-54X" and g_toggle_ports.get('25g', None):
+            for _port in g_toggle_ports['25g']['ports']:
+                if _port not in g_splitter_ports:
+                    g_quad_ports['25g'].append(_port)
+
+    for port_speed, port_info in g_toggle_ports.iteritems():
+        if port_info['ports']:
+            toggle(module, curr_switch, port_info['ports'], port_info['speeds'], port_speed,
+                   g_splitter_ports, g_quad_ports.get(port_speed, []))
+
 
 
 def assign_ipv6_address(module, ipv6_address, current_switch, ip_type):
@@ -683,7 +746,7 @@ def assign_ipv6_address(module, ipv6_address, current_switch, ip_type):
     if ipv6_address not in existing_ip:
         cli = clicopy
         cli += ' switch %s switch-setup-modify ' % current_switch
-        cli += ' %s %s/%s ' % ( ip_type, ipv6_ip, subnet_ipv6)
+        cli += ' %s %s/%s ' % (ip_type, ipv6_ip, subnet_ipv6)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
         output += 'Assigned %s ip ' % ipv6_ip
@@ -860,13 +923,12 @@ def main():
         })
 
     # Toggle 40g/100g ports to 10g/25g
-    if toggle_flag:
-        if toggle_local(module):
-            CHANGED_FLAG.append(True)
-            results.append({
-                'switch': current_switch,
-                'output': 'Toggled 40G/100g ports to 10G/25g '
-            })
+    if toggle_flag and toggle_ports(module, module.params['pn_current_switch']):
+        CHANGED_FLAG.append(True)
+        results.append({
+            'switch': current_switch,
+            'output': 'Toggled 40G/100g ports to 10G/25g '
+        })
 
     # Assign in-band ipv4.
     out = assign_inband_ipv4(module)

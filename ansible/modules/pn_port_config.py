@@ -333,6 +333,10 @@ def main():
             cli += ' speed ' + speed
         if port:
             cli += ' port ' + port
+            if enable == True:
+                cli += ' enable'
+            else:
+                cli += ' disable'
         if vxlan_termination:
             if vxlan_termination is True:
                 cli += ' vxlan-termination '
@@ -360,11 +364,6 @@ def main():
                 cli += ' edge-switch '
             else:
                 cli += ' no-edge-switch '
-        if enable:
-            if enable is True:
-                cli += ' enable '
-            else:
-                cli += ' disable '
         if description:
             cli += ' description ' + description
         if host_enable:
