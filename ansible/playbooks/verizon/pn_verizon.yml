@@ -62,6 +62,7 @@
         pn_ntp_server: '146.13.191.204'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
         pn_stp: True                                   # Specify True if you want to enable STP at the end. Default: False.
+        pn_autotrunk: disable                          # Flag to enable/disable auto-trunk setting.
       register: ztp_out                                # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true                    # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
@@ -83,7 +84,7 @@
    - name: Modify switch banner
      pn_switch_setup:
        pn_action: modify
-       pn_timezone: "America/New_york"
+       pn_timezone: "America/New_York"
        pn_banner: |
          "*********************** NOTICE ***********************
          This system is intended to be used solely by authorized
@@ -124,7 +125,7 @@
 
 # This task is to enable cpu class.
 # It uses pn_system_ettings.py module from library/ directory.
-- name: Enable cpu class 
+- name: Enable cpu class
   hosts: spine, leaf
   tags: system-settings
 
@@ -167,6 +168,27 @@
         - {name: 'stp', hog_protect: 'enable'}
         - {name: 'bfd', hog_protect: 'enable'}
         - {name: 'arp', hog_protect: 'enable'}
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create/delete/modify trunk configs.
+# It uses pn_trunk.py module from library/ directory.
+- name:  create static trunk
+  hosts: leaf
+  tags: static-trunk
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: create trunk
+      pn_trunk:
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
+        pn_name: "Static-128"                          # Specify the name of trunk.
+        pn_ports: "61,65"                                # Specify the ports.
       register: output
     - debug:
         var: output
@@ -302,55 +324,13 @@
         var: output
 
 
-# This task is to create VLAN.
-# It uses pn_vlan.py module from library/ directory.
-# If the tasks fails then it will retry as specified by retries count.
-- name: VLAN Configuration
-  tags: inband-vlan
-  hosts: spine, leaf
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: VLAN Configuration
-      pn_vlan:
-        pn_action: 'create'                             # The VLAN action to perform on the switches.
-        pn_vlanid: '610'                                # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-        pn_scope: 'local'                               # Scope for VLAN - fabric/local/cluster.
-        pn_description: 'inbandMGMT'                    # VLAN description.
-        pn_vxlan: 6100                                  # VXLAN tunnel mapped to VLAN.
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to modify fabric to local scope.
-# It uses pn_fabric_local.py module from library/ directory.
-- name: fabric local module
-  hosts: spine, leaf
-  tags: fabric-local
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: fabric local modify
-      pn_fabric_local:
-        pn_current_switch: "{{ inventory_hostname }}"     # Name of the switch on which this task is currently getting executed.
-        pn_action: 'modify'                                  # Action to be performed
-        pn_vlan: '610'                                    # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-      register: output
-    - debug:
-        var: output
-
-
 # This task will create vrouter on spine switches.
 # It uses pn_ztp_vrouter_setup.py module from library/ directory.
 # If the tasks fails then it will retry as specified by retries count.
 - name: Configure vrouter
   hosts: spine
   tags: vrouter-spine
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -378,6 +358,7 @@
 - name: Configure vrouter
   hosts: leaf
   tags: vrouter-leaf
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -401,34 +382,13 @@
         seconds: 5                                      # Pause playbook execution for specified amount of time.
 
 
-# This task is to create VLAN.
-# It uses pn_vlan.py module from library/ directory.
-# If the tasks fails then it will retry as specified by retries count.
-- name: VLAN Configuration
-  tags: vlan-244
-  hosts: leaf[0]
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: VLAN Configuration
-      pn_vlan:
-        pn_action: 'create'                             # The VLAN action to perform on the switches.
-        pn_vlanid: '244'                                # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
-        pn_scope: 'cluster'                              # Scope for VLAN - fabric/local/cluster.
-        pn_description: 'vlan-244'                      # VLAN description.
-      register: output
-    - debug:
-        var: output
-
-
 # This task is to configure VRRP for Layer 3 fabric.
 # It takes required VRRP config data from csv file.
 # It uses pn_ztp_l3_vrrp.py module from library/ directory.
 - name: Configure L3 VRRP
   hosts: leaf
   tags: l3-vrrp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -458,9 +418,78 @@
 
 # This task is to create VLAN.
 # It uses pn_vlan.py module from library/ directory.
+# If the tasks fails then it will retry as specified by retries count.
+- name: VLAN Configuration
+  tags: inband-vlan
+  hosts: spine, leaf
+  ignore_errors: no
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_action: 'create'                             # The VLAN action to perform on the switches.
+        pn_vlanid: '610'                                # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'local'                               # Scope for VLAN - fabric/local/cluster.
+        pn_description: 'inbandMGMT'                    # VLAN description.
+        pn_vxlan: 6100                                  # VXLAN tunnel mapped to VLAN.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to modify fabric to local scope.
+# It uses pn_fabric_local.py module from library/ directory.
+- name: fabric local module
+  hosts: spine, leaf
+  tags: fabric-local
+  ignore_errors: no
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: fabric local modify
+      pn_fabric_local:
+        pn_current_switch: "{{ inventory_hostname }}"     # Name of the switch on which this task is currently getting executed.
+        pn_action: 'modify'                                  # Action to be performed
+        pn_vlan: '610'                                    # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create VLAN.
+# It uses pn_vlan.py module from library/ directory.
+# If the tasks fails then it will retry as specified by retries count.
+- name: VLAN Configuration
+  tags: vlan-244
+  hosts: leaf[0]
+  ignore_errors: no
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: VLAN Configuration
+      pn_vlan:
+        pn_action: 'create'                             # The VLAN action to perform on the switches.
+        pn_vlanid: '244'                                # VLAN id. It supports single VLAN id, a list of VLANs or a VLAN Range. 2 and 4092.
+        pn_scope: 'cluster'                              # Scope for VLAN - fabric/local/cluster.
+        pn_description: 'vlan-244'                      # VLAN description.
+      register: output
+    - debug:
+        var: output
+
+
+# This task is to create VLAN.
+# It uses pn_vlan.py module from library/ directory.
 - name: VLAN Configuration
   tags: overlay-vlan-241
   hosts: leaf[0], leaf[2], leaf[4]
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -482,6 +511,7 @@
 - name: VLAN Configuration
   tags: overlay-vlan-242
   hosts: leaf[0], leaf[2], leaf[4]
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -503,6 +533,7 @@
 - name: VLAN Configuration
   tags: overlay-vlan-243
   hosts: leaf[0], leaf[2], leaf[4]
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -570,6 +601,7 @@
 - name: Configure L3 links
   hosts: leaf
   tags: l3-links
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -608,6 +640,7 @@
 - name: Configure OSPF
   hosts: all
   tags: iospf-leaf
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -649,6 +682,7 @@
 - name: vrouter interface modules
   hosts: spine[0]
   tags: spine-svi
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -671,6 +705,7 @@
 - name: vrouter interface  modules
   hosts: spine[1]
   tags: spine-svi
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -693,6 +728,7 @@
 - name: vrouter interface modules
   hosts: spine[2]
   tags: spine-svi
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -715,6 +751,7 @@
 - name: vrouter interface  modules
   hosts: spine[3]
   tags: spine-svi
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -737,6 +774,7 @@
 - name: Add ospf network
   hosts: spine[0]
   tags: spine-svi-ospf
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -764,6 +802,7 @@
 - name: vrouter pim config module
   hosts: spine, leaf
   tags: vrouter-pim-config
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -785,6 +824,7 @@
 - name: vrouter bgp network module
   hosts: leaf[4:5]
   tags: bgp-as
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -806,6 +846,7 @@
 - name: vrouter bgp network module
   hosts: leaf[4],leaf[5]
   tags: bgp-network
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -873,7 +914,8 @@
 # It uses pn_vrouter_bgp_network.py module from library/ directory.
 - name: vrouter bgp network module
   hosts: leaf[4], leaf[5]
-  tags: bgp-network-summary
+  tags: bgp-network
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -917,6 +959,7 @@
 - name: "Configure vrouter-bgp"
   hosts: leaf[4]
   tags: vrouter-bgp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -937,9 +980,11 @@
     - debug:
         var: output
 
+
 - name: "Configure vrouter-bgp"
   hosts: leaf[4]
   tags: vrouter-bgp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -963,6 +1008,7 @@
 - name: "Configure vrouter-bgp"
   hosts: leaf[4]
   tags: vrouter-bgp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -987,6 +1033,7 @@
 - name: "Configure vrouter-bgp"
   hosts: leaf[4]
   tags: vrouter-bgp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1010,6 +1057,7 @@
 - name: "Configure vrouter-bgp"
   hosts: leaf[4]
   tags: vrouter-bgp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1034,6 +1082,7 @@
 - name: "Configure vrouter-bgp"
   hosts: leaf[4]
   tags: vrouter-bgp
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1061,6 +1110,7 @@
 - name: ZTP VXLAN configuration
   hosts: spine[0]
   tags: vxlan
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1090,6 +1140,7 @@
 - name: ZTP VXLAN configuration
   hosts: leaf[0]
   tags: vxlan-inter-leaf
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1120,6 +1171,7 @@
 - name: ZTP VXLAN configuration
   hosts: leaf[0]
   tags: vxlan-inter-leaf
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1151,6 +1203,7 @@
 - name: ZTP VXLAN configuration
   hosts: leaf[2]
   tags: vxlan-inter-leaf
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1179,6 +1232,7 @@
 - name: admin service module
   hosts: spine, leaf
   tags: admin-service
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1206,6 +1260,7 @@
 - name: admin service module
   hosts: spine, leaf
   tags: admin-service
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1233,6 +1288,7 @@
 - name: admin session timeout
   hosts: spine, leaf
   tags: admin-session-timeout
+  ignore_errors: no
 
   vars_files:
   - cli_vault.yml
@@ -1263,7 +1319,7 @@
       pn_snmp_user:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
         pn_action: "create"                             # snmp-user configuration command: create/delete.
-        pn_user_name: "VINETro"                         # snmp user name.      
+        pn_user_name: "VINETro"                         # snmp user name.
         pn_auth: True                                   # snmp authentication required.
         pn_priv: True                                   # snmp privileges.
         pn_auth_pass: 'baseball'                        # snmp authentication password.
@@ -1288,7 +1344,7 @@
       pn_snmp_user:
         pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
         pn_action: "create"                             # snmp-user configuration command: create/delete.
-        pn_user_name: "VINETrw"                         # snmp user name.      
+        pn_user_name: "VINETrw"                         # snmp user name.
         pn_auth: True                                   # snmp authentication required.
         pn_priv: True                                   # snmp privileges.
         pn_auth_pass: 'football'                        # snmp authentication password.
@@ -1593,6 +1649,7 @@
     - debug:
         var: output
 
+
 # This task is to create/delete dhcp filter
 # It uses pn_dhcp_filter.py module from the library/ directory
 - name: Create dhcp filter
@@ -1631,7 +1688,6 @@
       register: output
     - debug:
         var: output
-
 
 
 # This task is to create/delete ipv6security raguard
@@ -1812,11 +1868,8 @@
         #pn_service_shell:
         #pn_service_vtysh:
         pn_authen: True
-        #pn_authen_local: True
         pn_sess_acct: True
         pn_cmd_acct: True
-        #pn_acct_local: True
-        #pn_author_local: True
         pn_cmd_author: True
         pn_sess_author: True
       register: output
