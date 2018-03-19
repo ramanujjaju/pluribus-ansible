@@ -117,6 +117,7 @@
         pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
         pn_action: "modify"                            # Specify the action. choices=['modify']
         pn_num_ipv6_128b_entries: "4000"                # Specify pn_num_ipv6_128b_entries value.
+        pn_cpu_rx_rate_pps: "15000"                    # Specify pn_cpu_rx_rate_pps value.
         pn_nvos_reboot: False                               # Specify reboot required or not. We would keep False since it will be rebooting in next module.
       register: output
     - debug:
