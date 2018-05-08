@@ -1,0 +1,5 @@
+REVIEWBOARD_URL = 'https://spook.pluribusnetworks.com:10443/'
+REPOSITORY = 'pluribus-ansible'
+TRACKING_BRANCH='upstream/shipit'
+BRANCH = 'shipit'
+DISABLE_SSL_VERIFICATION='false'
