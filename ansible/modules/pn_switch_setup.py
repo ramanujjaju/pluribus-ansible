@@ -191,6 +191,16 @@ options:
       - gateway IPv4 address
     required: false
     type: str
+  pn_loopback_ip:
+    description:
+      - Loopback IPv4 address
+    required: false
+    type: str
+  pn_loopback_ip6:
+    description:
+      - Loopback IPv6 address
+    required: false
+    type: str
 """
 
 EXAMPLES = """
@@ -296,6 +306,8 @@ def main():
                                     choices=['default', 'optimized']),
             pn_motd=dict(required=False, type='str'),
             pn_gateway_ip=dict(required=False, type='str'),
+            pn_loopback_ip=dict(required=False, type='str'),
+            pn_loopback_ip6=dict(required=False, type='str'),
         )
     )
 
@@ -332,6 +344,8 @@ def main():
     analytics_store = module.params['pn_analytics_store']
     motd = module.params['pn_motd']
     gateway_ip = module.params['pn_gateway_ip']
+    loopback_ip = module.params['pn_loopback_ip']
+    loopback_ip6 = module.params['pn_loopback_ip6']
 
     # Building the CLI command string
     cli = pn_cli(module, switch)
@@ -406,6 +420,10 @@ def main():
             cli += ' motd ' + motd
         if gateway_ip:
             cli += ' gateway-ip ' + gateway_ip
+        if loopback_ip:
+            cli += ' loopback-ip ' + loopback_ip
+        if loopback_ip6:
+            cli += ' loopback-ip6 ' + loopback_ip6
 
     run_cli(module, cli)
 

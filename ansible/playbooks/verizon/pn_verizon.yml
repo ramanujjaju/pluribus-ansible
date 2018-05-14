@@ -100,6 +100,39 @@
        var: output
 
 
+# This task is to create/modify switch configs.
+# It uses pn_switch_setup.py module from library/ directory.
+- name: Modify in-band network
+  hosts: spine[0]
+  tags: switch-setup
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Modify switch inband ipv6
+      pn_switch_setup:
+        pn_action: "modify"
+        pn_cliswitch: "{{ item.pn_cliswitch }}"
+        pn_in_band_ip6: "{{ item.ip }}"
+        pn_loopback_ip: "{{ item.loopback }}"
+        pn_loopback_ip6: "{{ item.loopbackip6 }}"
+      with_items:
+        - {pn_cliswitch: 'hmplabpsq-we60100', ip: '2620:0:167f:b010::10/64', loopback: '104.255.61.1', loopbackip6: '2620:0:167f:b000::10'}
+        - {pn_cliswitch: 'hmplabpsq-we60200', ip: '2620:0:167f:b010::11/64', loopback: '104.255.61.2', loopbackip6: '2620:0:167f:b000::11'}
+        - {pn_cliswitch: 'hmplabpsq-we60300', ip: '2620:0:167f:b010::12/64', loopback: '104.255.61.3', loopbackip6: '2620:0:167f:b000::12'}
+        - {pn_cliswitch: 'hmplabpsq-we60400', ip: '2620:0:167f:b010::13/64', loopback: '104.255.61.4', loopbackip6: '2620:0:167f:b000::13'}
+        - {pn_cliswitch: 'hmplabpsq-we50100', ip: '2620:0:167f:b010::14/64', loopback: '104.255.61.5', loopbackip6: '2620:0:167f:b000::14'}
+        - {pn_cliswitch: 'hmplabpsq-we50200', ip: '2620:0:167f:b010::15/64', loopback: '104.255.61.6', loopbackip6: '2620:0:167f:b000::15'}
+        - {pn_cliswitch: 'hmplabpsq-we50300', ip: '2620:0:167f:b010::16/64', loopback: '104.255.61.7', loopbackip6: '2620:0:167f:b000::16'}
+        - {pn_cliswitch: 'hmplabpsq-we50400', ip: '2620:0:167f:b010::17/64', loopback: '104.255.61.8', loopbackip6: '2620:0:167f:b000::17'}
+        - {pn_cliswitch: 'hmplabpsq-we50500', ip: '2620:0:167f:b010::18/64', loopback: '104.255.61.9', loopbackip6: '2620:0:167f:b000::18'}
+        - {pn_cliswitch: 'hmplabpsq-we50600', ip: '2620:0:167f:b010::19/64', loopback: '104.255.61.10', loopbackip6: '2620:0:167f:b000::19'}
+      register: output
+    - debug:
+        var: output
+
+
 # This task is for system flow setting.
 # It uses pn_sys_flow_settings.py module from library/ directory.
 - name: Syetem flow setting
@@ -1495,37 +1528,6 @@
         pn_scope: "fabric"                              # Specify the name of the scope. local/fabric
         pn_host: "104.255.40.101"                        # Specify host ip.
         pn_message_format: 'structured'                 # structured/legacy
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to create/modify switch configs.
-# It uses pn_switch_setup.py module from library/ directory.
-- name: Modify in-band network
-  hosts: spine[0]
-  tags: inband-ipv6
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Modify switch inband ipv6
-      pn_switch_setup:
-        pn_action: "modify"
-        pn_cliswitch: "{{ item.pn_cliswitch }}"
-        pn_in_band_ip6: "{{ item.ip }}"
-      with_items:
-        - {pn_cliswitch: 'hmplabpsq-we60100', ip: '2620:0:167f:b010::10/64'}
-        - {pn_cliswitch: 'hmplabpsq-we60200', ip: '2620:0:167f:b010::11/64'}
-        - {pn_cliswitch: 'hmplabpsq-we60300', ip: '2620:0:167f:b010::12/64'}
-        - {pn_cliswitch: 'hmplabpsq-we60400', ip: '2620:0:167f:b010::13/64'}
-        - {pn_cliswitch: 'hmplabpsq-we50100', ip: '2620:0:167f:b010::14/64'}
-        - {pn_cliswitch: 'hmplabpsq-we50200', ip: '2620:0:167f:b010::15/64'}
-        - {pn_cliswitch: 'hmplabpsq-we50300', ip: '2620:0:167f:b010::16/64'}
-        - {pn_cliswitch: 'hmplabpsq-we50400', ip: '2620:0:167f:b010::17/64'}
-        - {pn_cliswitch: 'hmplabpsq-we50500', ip: '2620:0:167f:b010::18/64'}
-        - {pn_cliswitch: 'hmplabpsq-we50600', ip: '2620:0:167f:b010::19/64'}
       register: output
     - debug:
         var: output
