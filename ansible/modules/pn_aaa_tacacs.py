@@ -129,7 +129,7 @@ def main():
         )
 
     cli = pn_cli(module)
-    cli += action + ' name ' + name
+    cli += 'aaa-tacacs-' + action + ' name ' + name
     if action != 'delete':
         if scope:
             cli += ' scope ' + scope

@@ -333,7 +333,8 @@ def main():
             cli += ' speed ' + speed
         if port:
             cli += ' port ' + port
-            if enable == True:
+        if enable:
+            if enable is True:
                 cli += ' enable'
             else:
                 cli += ' disable'
