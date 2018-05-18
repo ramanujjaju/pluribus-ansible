@@ -161,7 +161,11 @@ def check_user(module, user_name):
     :return: String of user if exists else Success.
     """
     cli = pn_cli(module)
-    cli += 'snmp-user-show user-name ' + user_name
+    switch = module.params['pn_cliswitch']
+    if switch is None:
+        switch = 'switch-local'
+    cli += switch
+    cli += ' snmp-user-show user-name ' + user_name
     cli = shlex.split(cli)
     return module.run_command(cli)[1]
 

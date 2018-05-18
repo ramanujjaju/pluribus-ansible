@@ -686,6 +686,19 @@ def add_ospf_loopback(module, current_switch):
                 cli += ' nic %s' % nic
                 cli += ' ospf6-area %s' % module.params['pn_ospf_v6_area_id']
                 output += run_cli(module, cli)
+
+            # Add loopback interface 'lo' to ospf6
+            cli = clicopy
+            nic = "lo"
+            cli += ' vrouter-ospf6-show vrouter-name %s' % vr_name
+            cli += ' nic %s no-show-headers ' % nic
+            already_added = run_cli(module, cli)
+            if 'Success' in already_added:
+                cli = clicopy
+                cli += ' vrouter-ospf6-add vrouter-name %s' % vr_name
+                cli += ' nic %s' % nic
+                cli += ' ospf6-area %s' % module.params['pn_ospf_v6_area_id']
+                output += run_cli(module, cli)
         else:
             l_ip = ip1[1]
             cli = clicopy
@@ -1103,6 +1116,15 @@ def make_interface_passive(module, current_switch):
                 vrname, intf_index, vrname
             )
             CHANGED_FLAG.append(True)
+
+    # Add interface config to 'lo'
+    if addr_type == 'ipv4_ipv6' or addr_type == 'ipv6':
+        cli = clicopy
+        cli += ' vrouter-interface-config-add vrouter-name %s ' % vrname
+        cli += ' nic lo ospf-passive-if '
+        run_cli(module, cli)
+        output += '%s: Added OSPF nic lo to %s \n' % (current_switch, vrname)
+        CHANGED_FLAG.append(True)
 
     return output
 
