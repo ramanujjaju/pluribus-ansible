@@ -1052,11 +1052,14 @@ def assign_leafcluster_ospf_interface(module):
             ipv4_1, ipv4_2 = available_ips_ipv4[0:2]
             available_ips_ipv4.remove(ipv4_1)
             available_ips_ipv4.remove(ipv4_2)
-            ip_list = available_ips_ipv6.next()
-            if subnet_v6 == '127':
-                ipv6_1, ipv6_2 = ip_list[0:2]
+            if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
+                ip_list = available_ips_ipv6.next()
+                if subnet_v6 == '127':
+                    ipv6_1, ipv6_2 = ip_list[0:2]
+                else:
+                    ipv6_1, ipv6_2 = ip_list[1:3]
             else:
-                ipv6_1, ipv6_2 = ip_list[1:3]
+                ipv6_1 = ipv6_2 = None
             if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
                 output += vrouter_iospf_vlan_ports_add(module, cluster_node_1, cluster_ports_1)
                 output += vrouter_iospf_interface_add(module, cluster_node_1, ipv4_1, ipv6_1,
@@ -1079,6 +1082,7 @@ def make_interface_passive(module, current_switch):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
+    addr_type = module.params['pn_addr_type']
 
     vrname = "%s-vrouter" % current_switch
     cli = clicopy

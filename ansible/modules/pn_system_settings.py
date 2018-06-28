@@ -140,6 +140,11 @@ options:
       - enable/disable routing to vlags from cluster links
     required: false
     type: bool
+  pn_cosq_weight_auto::
+    description:
+      - Adjust queue weights automatically based on min-guarantee configuration.
+    required: false
+    type: bool
 """
 
 EXAMPLES = """
@@ -224,6 +229,7 @@ def main():
             pn_auto_host_bundle=dict(required=False, type='bool'),
             pn_optimize_datapath=dict(required=False, type='str', choices=['disable', 'cluster-only', 'all']),
             pn_routing_over_vlags=dict(required=False, type='bool'),
+            pn_cosq_weight_auto=dict(required=False, type='bool'),
         )
     )
 
@@ -253,6 +259,7 @@ def main():
     auto_host_bundle = module.params['pn_auto_host_bundle']
     optimize_datapath = module.params['pn_optimize_datapath']
     routing_over_vlags = module.params['pn_routing_over_vlags']
+    cosq_weight_auto = module.params['pn_cosq_weight_auto']
 
     # Building the CLI command string
     cli = pn_cli(module, switch)
@@ -346,6 +353,11 @@ def main():
             cli += ' routing-over-vlags '
         else:
             cli += ' no-routing-over-vlags '
+    if cosq_weight_auto:
+        if cosq_weight_auto is True:
+            cli += ' cosq-weight-auto '
+        else:
+            cli += ' no-cosq-weight-auto '
 
     aggr_cli = cli
     out = run_cli(module, cli)
