@@ -55,8 +55,8 @@ options:
 EXAMPLES = """
 - name: Reset switches
     pn_switch_config_reset:
-      pn_cliusername: "{{ USERNAME }}"
-      pn_clipassword: "{{ PASSWORD }}"
+      pn_cliusername: "{{ ansible_user }}"
+      pn_clipassword: "{{ ansible_ssh_pass }}"
       pn_host_list: "{{ groups['all'] }}"
       pn_host_ips: "{{ groups['all'] |
         map('extract', hostvars, ['ansible_host']) | join(',') }}"

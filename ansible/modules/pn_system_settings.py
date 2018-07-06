@@ -366,7 +366,7 @@ def main():
     if out is not None:
         if RESTART_STR in out:
             cli = pn_cli(module, switch, username, password)
-            cli += ' nvos-restart '
+            cli += ' switch-reboot '
             aggr_cli += ' and ' + cli
             out = run_cli(module, cli)
             if out is not None:

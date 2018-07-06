@@ -7,9 +7,6 @@
   hosts: localhost
   tags: eula-accept
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Auto accept EULA
       pn_ztp_eula_accept:
@@ -33,9 +30,6 @@
   tags: fabric-setup
   serial: 1
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Disable STP, enable ports and create/join fabric
       pn_ztp_initial_setup:
@@ -49,12 +43,12 @@
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
         pn_static_setup: 'false'                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
-        pn_mgmt_ip_subnet: '25'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
-        pn_gateway_ip: '159.67.206.129'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
-        pn_dns_ip: '138.83.67.15'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
-        pn_dns_secondary_ip: '138.83.162.53'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
-        pn_domain_name: 'verizon.com'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
-        pn_ntp_server: '138.83.67.15'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
+        pn_mgmt_ip_subnet: '23'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: '10.14.30.1'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+        pn_dns_ip: '10.135.2.13'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
+        pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
+        pn_domain_name: 'pluribusnetworks.com'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+        pn_ntp_server: '0.us.pool.ntp.org'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
         pn_stp: True                                   # Specify True if you want to enable STP at the end. Default: False.
         pn_autotrunk: disable                          # Flag to enable/disable auto-trunk setting.
@@ -63,37 +57,25 @@
       retries: 3                                       # This is the retries count
       delay: 3
     - pause:
-        seconds: 2                                     # Pause playbook execution for specified amount of time.
+        seconds: 5                                     # Pause playbook execution for specified amount of time.
 
 
-# Add in-ban-ipv6 to all the switches
-# This task is to create/modify switch configs.
-# It uses pn_switch_setup.py module from library/ directory.
-- name: Modify in-band network
-  hosts: spine[0]
-  tags: inband-ipv6
-
-  vars_files:
-  - cli_vault.yml
+# This is to enable host ports on all switches.
+# This uses pn_port_config.py module form library/directory.
+- name: Port config
+  hosts: all
+  tags: host-enable-ports
+  ignore_errors: no
 
   tasks:
-    - name: Modify switch inband ipv6
-      pn_switch_setup:
-        pn_action: "modify"
-        pn_cliswitch: "{{ item.pn_cliswitch }}"
-        pn_in_band_ip6: "{{ item.ip }}"
-      with_items:
-        - {pn_cliswitch: 'tmtrflaan-de60116', ip: '2620:0:1651:107::4/64'}
-        - {pn_cliswitch: 'tmtrflaan-de60216', ip: '2620:0:1651:107::5/64'}
-        - {pn_cliswitch: 'tmtrflaan-de60316', ip: '2620:0:1651:107::6/64'}
-        - {pn_cliswitch: 'tmtrflaan-de60416', ip: '2620:0:1651:107::7/64'}
-        - {pn_cliswitch: 'tmtrflaan-we50116', ip: '2620:0:1651:107::8/64'}
-        - {pn_cliswitch: 'tmtrflaan-we50216', ip: '2620:0:1651:107::9/64'}
-        - {pn_cliswitch: 'tmtrflaan-we50316', ip: '2620:0:1651:107::10/64'}
-        - {pn_cliswitch: 'tmtrflaan-we50416', ip: '2620:0:1651:107::11/64'}
-      register: output
-    - debug:
-        var: output
+   - name:
+     pn_port_config:
+       pn_action: "modify"
+       pn_port: "all"
+       pn_host_enable: True 
+     register: output
+   - debug:
+       var: output
 
 
 # This task is to create/modify switch configs.
@@ -103,16 +85,13 @@
   hosts: spine[0]
   tags: switch-setup
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Modify loopback ip
       pn_switch_setup:
         pn_action: "modify"
         pn_cliswitch: "{{ item.pn_cliswitch }}"
         pn_loopback_ip: "{{ item.loopback }}"
-        pn_ntp_secondary_server: "138.83.162.53"
+#        pn_ntp_secondary_server: "138.83.162.53"
       with_items:
         - {pn_cliswitch: 'tmtrflaan-de60116', loopback: '159.67.205.32'}
         - {pn_cliswitch: 'tmtrflaan-de60216', loopback: '159.67.205.33'}
@@ -135,9 +114,6 @@
   hosts: spine, leaf
   tags: sys-flow-settings
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: System flow setting
       pn_sys_flow_setting:
@@ -151,71 +127,15 @@
       register: output
     - debug:
         var: output
-
-
-# This task is to enable cpu class.
-# It uses pn_system_ettings.py module from library/ directory.
-# Enable cpu-class
-- name: Enable cpu class
-  hosts: spine, leaf
-  tags: system-settings
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Enable cpu class
-      pn_system_settings:
-        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
-        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
-        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
-        pn_action: "modify"                            # Specify the action. choices=['modify']
-        pn_cpu_class_enable: True                      # Specify to enable/disable cpu class.
-#       pn_optimize_arps: True
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to create/delete/modify cpu class.
-# It uses pn_cpu_class.py module from library/ directory.
-# Enable hog-protect and set rate-limit on cpu classes.
-- name: Modify cpu class
-  hosts: spine,leaf
-  tags: cpu-class
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: Modify cpu class
-      pn_cpu_class:
-        pn_action: "modify"
-        pn_name: "{{ item.name }}"
-        pn_hog_protect: "enable"
-        pn_rate_limit: "1000"
-      with_items:
-        - {name: 'ospf'}
-        - {name: 'bgp'}
-        - {name: 'lacp'}
-        - {name: 'vrrp'}
-        - {name: 'local-subnet'}
-        - {name: 'stp'}
-        - {name: 'bfd'}
-        - {name: 'arp'}
-      register: output
-    - debug:
-        var: output
+    - pause:
+        seconds: 5
 
 
 # It uses pn_system_ettings.py module from library/ directory.
-# Enable cosq weight auto
+# Enable cosq weight auto 
 - name: Enable cosq weight auto
   hosts: spine, leaf
-  tags: system-settings
-
-  vars_files:
-  - cli_vault.yml
+  tags: cosq-weight-auto
 
   tasks:
     - name: Enable cosq weight auto
@@ -228,6 +148,8 @@
       register: output
     - debug:
         var: output
+    - pause:
+        seconds: 5                                     # Pause playbook execution for specified amount of time.
 
 
 # Static-Trunks between Leaf switches
@@ -236,9 +158,6 @@
 - name:  create static trunk
   hosts: leaf
   tags: static-trunk
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: create trunk
@@ -250,20 +169,48 @@
       register: output
     - debug:
         var: output
+    - pause:
+        seconds: 5                                     # Pause playbook execution for specified amount of time.
+
+
+# This task is to create/modify switch configs.
+# It uses pn_switch_setup.py module from library/ directory.
+# Modify the banner and the timezone on the switches.
+- name: Modify Banner
+  hosts: spine,leaf
+  tags: banner
+
+  tasks:
+   - name: Modify switch banner
+     pn_switch_setup:
+       pn_action: modify
+#       pn_timezone: "America/New_York"
+       pn_banner: |
+         "*********************** NOTICE ***********************
+         This system is intended to be used solely by authorized
+         users in the course of legitimate corporate business.
+         Users are monitored to the extent necessary to properly
+         administer the system, to identify unauthorized users
+         or users operating beyond their proper authority, and to
+         investigate improper access or use. By accessing this
+         system, you are consenting to this monitoring.
+         *********************** NOTICE ***********************"
+     register: output
+   - debug:
+       var: output
+   - pause:
+        seconds: 5
 
 
 # This task will create vrouter on spine switches.
 # It uses pn_ztp_vrouter_setup.py module from library/ directory.
 # If the tasks fails then it will retry as specified by retries count.
-# Create vrouters on spine and add Loopback IP, VRRP ID and enable
-# pim-ssm.
+# Create vrouters on spine and add Loopback IP, VRRP ID and enable 
+# pim-ssm. 
 - name: Configure vrouter
   hosts: spine
   tags: vrouter-spine
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Setup vrouter
@@ -279,36 +226,8 @@
       until: vrouter_out.failed != true                # If the above code fails it will retry the code
       retries: 3                                       # This is the retries count
       delay: 3
-
-
-# This task is to create/modify switch configs.
-# It uses pn_switch_setup.py module from library/ directory.
-# Modify the banner and the timezone on the switches.
-- name: Modify Banner
-  hosts: spine,leaf
-  tags: banner
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-   - name: Modify switch banner
-     pn_switch_setup:
-       pn_action: modify
-       pn_timezone: "America/New_York"
-       pn_banner: |
-         "*********************** NOTICE ***********************
-         This system is intended to be used solely by authorized
-         users in the course of legitimate corporate business.
-         Users are monitored to the extent necessary to properly
-         administer the system, to identify unauthorized users
-         or users operating beyond their proper authority, and to
-         investigate improper access or use. By accessing this
-         system, you are consenting to this monitoring.
-         *********************** NOTICE ***********************"
-     register: output
-   - debug:
-       var: output
+    - pause:
+        seconds: 5                                     # Pause playbook execution for specified amount of time.
 
 
 # This task will create vrouter on leaf switches.
@@ -321,16 +240,12 @@
   tags: vrouter-leaf
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Setup vrouter
       pn_ztp_vrouter_setup:
         pn_loopback_ip: '159.67.205.36/32'               # Loopback network to confgure ipv4 loopback ips to vrouters.
         pn_vrrp_id: '15'                                # Vrrp-id for the vrouters
         pn_current_switch: "{{ inventory_hostname }}"   # The name of the current executing switch
-        pn_spine_list: "{{ groups['spine'] }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"            # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_pim_ssm: True                                # Variable to specify pim_ssm for ospf
         pn_ospf_redistribute: 'none'
@@ -351,11 +266,8 @@
   tags: l3-vrrp
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   vars:
-  - csv_file: vrrp_verizon_pilot.csv
+  - csv_file: vrrp_verizon.csv
 
   tasks:
     - name: Configure L3 vrrp
@@ -367,7 +279,7 @@
         pn_jumbo_frames: True                   # Flag to assign mtu Default: False.
         pn_addr_type: 'ipv4'               # The type of address scheme to be used. Options: ipv4/dual_stack.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
-        pn_ospf_redistribute: 'none'            # Variable to configure ospf redistribute
+        #pn_ospf_redistribute: 'none'            # Variable to configure ospf redistribute
       register: vrrp_out                        # Variable to hold/register output of the above tasks.
       until:  vrrp_out.failed != true           # If error pops up it will retry the code
       retries: 3                                # This is the retries count
@@ -383,9 +295,6 @@
   tags: vlan-168
   hosts: leaf[0], leaf[2]
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: VLAN Configuration
@@ -407,9 +316,6 @@
   hosts: all
   tags: vlan-port-490
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: vlan add port
       pn_vlan_port:
@@ -429,9 +335,6 @@
 - name:  add port to vlan
   hosts: leaf[0], leaf[1]
   tags: vlan-port-490
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: vlan add port
@@ -453,9 +356,6 @@
   hosts: leaf[2], leaf[3]
   tags: vlan-port-490
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: vlan add port
       pn_vlan_port:
@@ -475,9 +375,6 @@
   hosts: leaf
   tags: l3-links
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Auto configure link IPs
@@ -516,9 +413,6 @@
   hosts: spine, leaf
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: VLAN Configuration
       pn_vlan:
@@ -540,9 +434,6 @@
   tags: fabric-local
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: fabric local modify
       pn_fabric_local:
@@ -561,9 +452,6 @@
   hosts: leaf[0]
   tags: leaf-svi
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Add a vrouter interface
@@ -585,9 +473,6 @@
   hosts: leaf[1]
   tags: leaf-svi
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Add a vrouter interface
@@ -611,12 +496,9 @@
   tags: iospf-leaf
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Configure OSPF
-      pn_ztp_bgp_ospf:
+      pn_ztp_ospf:
         pn_current_switch: "{{ inventory_hostname }}"      # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"             # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"               # List of all leaf switches mentioned under [leaf] grp in hosts file.
@@ -654,9 +536,6 @@
   tags: spine-svi
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Add a vrouter interface
       pn_vrouter_iface:
@@ -677,9 +556,6 @@
   hosts: spine[1]
   tags: spine-svi
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Add a vrouter interface
@@ -702,9 +578,6 @@
   tags: spine-svi
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Add a vrouter interface
       pn_vrouter_iface:
@@ -726,9 +599,6 @@
   tags: spine-svi
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Add a vrouter interface
       pn_vrouter_iface:
@@ -749,9 +619,6 @@
   hosts: spine[0]
   tags: spine-svi-ospf
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Add spine-svi network to ospf
@@ -781,9 +648,6 @@
   tags: vxlan
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: ZTP Vxlan configuration
       pn_ztp_vxlan:
@@ -798,7 +662,7 @@
       retries: 3                                               # This is the retries count
       delay: 3
     - pause:
-        seconds: 1                                             # Pause playbook execution for specified amount of time.
+        seconds: 2                                             # Pause playbook execution for specified amount of time.
 
 
 # This task is to configure VXLAN.
@@ -810,9 +674,6 @@
   hosts: leaf[0]
   tags: vxlan-inter-leaf
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: ZTP Vxlan configuration
@@ -829,7 +690,7 @@
       retries: 3                                               # This is the retries count
       delay: 3
     - pause:
-        seconds: 1                                             # Pause playbook execution for specified amount of time.
+        seconds: 2                                             # Pause playbook execution for specified amount of time.
 
 
 # Add Host ports, nexus ports and vxlan-loopback trunk port
@@ -839,9 +700,6 @@
 - name:  add port to vlan
   hosts: leaf[0], leaf[1]
   tags: vlan-port-168
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: vlan add port
@@ -862,9 +720,6 @@
   hosts: leaf[2], leaf[3]
   tags: vlan-port-168
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: vlan add port
       pn_vlan_port:
@@ -883,9 +738,6 @@
 - name:  Remove port from vlan
   hosts: all
   tags: vlan-port-400
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: vlan add port
@@ -907,9 +759,6 @@
   hosts: spine
   tags: vlan-port-400
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: vlan add port
       pn_vlan_port:
@@ -930,9 +779,6 @@
   hosts: leaf[0], leaf[1]
   tags: vlan-port-400
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: vlan add port
       pn_vlan_port:
@@ -951,9 +797,6 @@
 - name:  add port to vlan
   hosts: leaf[2], leaf[3]
   tags: vlan-port-400
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: vlan add port
@@ -975,9 +818,6 @@
   tags: bgp-as
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: vrouter bgp network add functionality
       pn_vrouter:
@@ -992,14 +832,11 @@
 
 # This task is to add loopback ip to bgp network.
 # It uses pn_vrouter_bgp_network.py module from library/ directory.
-# Advertise Loopback IPs via BGP
+# Advertise Loopback IPs via BGP 
 - name: vrouter bgp network module
   hosts: leaf[0],leaf[1]
   tags: bgp-network
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: vrouter bgp network add functionality
@@ -1025,9 +862,6 @@
   hosts: leaf[0], leaf[1]
   tags: bgp-network
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: vrouter bgp network add functionality
@@ -1083,9 +917,6 @@
   tags: vrouter-bgp
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: "Configure vrouter-bgp"
       pn_vrouter_bgp:
@@ -1111,9 +942,6 @@
   tags: vrouter-bgp
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: "Configure vrouter-bgp"
       pn_vrouter_bgp:
@@ -1137,9 +965,6 @@
   hosts: leaf[0]
   tags: vrouter-bgp
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: "Configure vrouter-bgp"
@@ -1165,9 +990,6 @@
   tags: vrouter-pim-config
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: pim config modify
       pn_vrouter_pim_config:
@@ -1180,45 +1002,22 @@
         var: output
 
 
-# Trunk between Leaf1 and Nexus1
-# This task is to create/delete/modify trunk configs.
-# It uses pn_trunk.py module from library/ directory.
-- name:  create trunk
+# VLAG between Leaf 1&2 and Nexus1
+# This task is to create/delete/modify vlag configs.
+# It uses pn_vlag.py module from library/ directory.
+- name:  create vlag
   hosts: leaf[0]
-  tags: trunk
-
-  vars_files:
-  - cli_vault.yml
+  tags: vlag
 
   tasks:
-    - name: create trunk
-      pn_trunk:
-        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+    - name: create vlag
+      pn_vlag:
         pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
-        pn_name: "501tocisco"                          # Specify the name of trunk.
-        pn_physical_ports: "2,5"                                # Specify the ports.
-      register: output
-    - debug:
-        var: output
-
-
-# Trunk between Leaf2 and Nexus1
-# This task is to create/delete/modify trunk configs.
-# It uses pn_trunk.py module from library/ directory.
-- name:  create trunk
-  hosts: leaf[1]
-  tags: trunk
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: create trunk
-      pn_trunk:
-        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
-        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
-        pn_name: "502tocisco"                          # Specify the name of trunk.
-        pn_physical_ports: "2,5"                                # Specify the ports.
+        pn_name: "501pair-to-wn701-vlag"                           # Specify the name of vlag.
+        pn_port: "2"                          # Specify the port of vlag.
+        pn_peer_port: "5"                     # Specify the peer port.
+        pn_mode: "active-active"                       # Specify mode. choices=['active-standby', 'active-active'].
+        pn_lacp_mode: "active"                        # Specify lacp mode. choices=['off', 'passive', 'active'].
       register: output
     - debug:
         var: output
@@ -1231,16 +1030,13 @@
   hosts: leaf[0]
   tags: vlag
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: create vlag
       pn_vlag:
         pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
-        pn_name: "PN-to-Nexus-vlag"                           # Specify the name of vlag.
-        pn_port: "501tocisco"                          # Specify the port of vlag.
-        pn_peer_port: "502tocisco"                     # Specify the peer port.
+        pn_name: "501pair-to-wn702-vlag"                           # Specify the name of vlag.
+        pn_port: "5"                          # Specify the port of vlag.
+        pn_peer_port: "2"                     # Specify the peer port.
         pn_mode: "active-active"                       # Specify mode. choices=['active-standby', 'active-active'].
         pn_lacp_mode: "active"                        # Specify lacp mode. choices=['off', 'passive', 'active'].
       register: output
@@ -1248,52 +1044,22 @@
         var: output
 
 
-## VLAG between Leaf 1&2 and Nexus1
-## This task is to create/delete/modify vlag configs.
-## It uses pn_vlag.py module from library/ directory.
-#- name:  create vlag
-#  hosts: leaf[0]
-#  tags: vlag
+# Stp port modify on leaf1,leaf2.
+# This task is to modify stp.
+# It user pn_stp_port.py module from modules directory.
+- name: Modify stp
+  hosts: leaf[0], leaf[1]
+  tags: stp-port
 
-#  vars_files:
-#  - cli_vault.yml
-
-#  tasks:
-#    - name: create vlag
-#      pn_vlag:
-#        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
-#        pn_name: "501pair-to-wn701-vlag"                           # Specify the name of vlag.
-#        pn_port: "2"                          # Specify the port of vlag.
-#        pn_peer_port: "5"                     # Specify the peer port.
-#        pn_mode: "active-active"                       # Specify mode. choices=['active-standby', 'active-active'].
-#        pn_lacp_mode: "active"                        # Specify lacp mode. choices=['off', 'passive', 'active'].
-#      register: output
-#    - debug:
-#        var: output
-
-
-## VLAG between Leaf 1&2 and Nexus1
-## This task is to create/delete/modify vlag configs.
-## It uses pn_vlag.py module from library/ directory.
-#- name:  create vlag
-#  hosts: leaf[0]
-#  tags: vlag
-
-#  vars_files:
-#  - cli_vault.yml
-
-#  tasks:
-#    - name: create vlag
-#      pn_vlag:
-#        pn_action: "create"                            # Specify the action. choices=['create', 'delete', 'modify']
-#        pn_name: "501pair-to-wn702-vlag"                           # Specify the name of vlag.
-#        pn_port: "5"                          # Specify the port of vlag.
-#        pn_peer_port: "2"                     # Specify the peer port.
-#        pn_mode: "active-active"                       # Specify mode. choices=['active-standby', 'active-active'].
-#        pn_lacp_mode: "active"                        # Specify lacp mode. choices=['off', 'passive', 'active'].
-#      register: output
-#    - debug:
-#        var: output
+  tasks:
+    - name: Modify stp
+      pn_stp_port:
+        pn_action: "modify"                        # Specify the action. choices=['modify']
+        pn_port: "2,5"                             # Specify the port.
+        pn_cost: "200"                             # Specify the cost.
+      register: output
+    - debug:
+        var: output
 
 
 # VLAG between Leaf 3&4 and HostA
@@ -1302,9 +1068,6 @@
 - name:  create vlag
   hosts: leaf[2]
   tags: vlag
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: create vlag
@@ -1327,9 +1090,6 @@
   hosts: leaf[2]
   tags: vlag
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: create vlag
       pn_vlag:
@@ -1350,10 +1110,7 @@
 #- name:  create vlag
 #  hosts: leaf[0]
 #  tags: vlag
-
-#  vars_files:
-#  - cli_vault.yml
-
+#
 #  tasks:
 #    - name: create vlag
 #      pn_vlag:
@@ -1373,9 +1130,6 @@
 #- name:  create vlag
 #  hosts: leaf[0]
 #  tags: vlag
-
-#  vars_files:
-#  - cli_vault.yml
 #
 #  tasks:
 #    - name: create vlag
@@ -1397,9 +1151,6 @@
 #  hosts: leaf[0]
 #  tags: vlag
 #
-#  vars_files:
-#  - cli_vault.yml
-#
 #  tasks:
 #    - name: create vlag
 #      pn_vlag:
@@ -1419,9 +1170,6 @@
 #- name:  create vlag
 #  hosts: leaf[0]
 #  tags: vlag
-
-#  vars_files:
-#  - cli_vault.yml
 #
 #  tasks:
 #    - name: create vlag
@@ -1443,9 +1191,6 @@
   hosts: spine, leaf
   tags: admin-service
   ignore_errors: no
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: admin service functionality
@@ -1473,9 +1218,6 @@
   tags: admin-service
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: admin service functionality
       pn_admin_service:
@@ -1502,9 +1244,6 @@
   tags: admin-session-timeout
   ignore_errors: no
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: admin session timeout functionality
       pn_admin_session_timeout:
@@ -1523,9 +1262,6 @@
 - name: snmp user module
   hosts: spine, leaf
   tags: snmp-user
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: snmp-user functionality
@@ -1550,9 +1286,6 @@
   hosts: spine, leaf
   tags: snmp-user
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: snmp-user functionality
       pn_snmp_user:
@@ -1574,9 +1307,6 @@
 - name: snmp community module
   hosts: spine, leaf
   tags: snmp-community
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: snmp-community functionality
@@ -1601,48 +1331,53 @@
         var: output
 
 
-## This task is to create/delete snmp trap sink.
-## It uses pn_snmp_trap_sink.py module from library/ directory.
-#- name: snmp trap sink module
-#  hosts: spine, leaf
-#  tags: snmp-trap-sink
-
-#  vars_files:
-#  - cli_vault.yml
-
-#  tasks:
-#    - name: snmp trap sink functionality
-#      pn_snmp_trap_sink:
-#        pn_action: "create"
-#        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-#        pn_community: "public"                        # snmp community string.
-#        pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
-#        pn_dest_host: "138.83.67.8"                  # snmp dest host.
-#      register: output
-#    - debug:
-#        var: output
+    - name: snmp-community functionality
+      pn_snmp_community:
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_action: "create"                             # snmp-community configuration command: create/delete/modify.
+        pn_community_string: "F4u1tMgmt"                 # snmp-communtiy string name.
+        pn_community_type: "read-write"                  # snmp-communtiy string type. choices=['read-only', 'read-write']
+      register: output
+    - debug:
+        var: output
 
 
-## This task is to create/delete snmp trap sink.
-## It uses pn_snmp_trap_sink.py module from library/ directory.
-#- name: snmp trap sink module
-#  hosts: spine, leaf
-#  tags: snmp-trap-sink
+# This task is to create/delete snmp trap sink.
+# It uses pn_snmp_trap_sink.py module from library/ directory.
+- name: snmp trap sink module
+  hosts: spine, leaf
+  tags: snmp-trap-sink
 
-#  vars_files:
-#  - cli_vault.yml
+  tasks:
+    - name: snmp trap sink functionality
+      pn_snmp_trap_sink:
+        pn_action: "create"
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_community: "F4u1tMgmt"                        # snmp community string.
+        pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
+        pn_dest_host: "138.83.67.8"                  # snmp dest host.
+      register: output
+    - debug:
+        var: output
 
-#  tasks:
-#    - name: snmp trap sink functionality
-#      pn_snmp_trap_sink:
-#        pn_action: "create"
-#        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
-#        pn_community: "public"                        # snmp community string.
-#        pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
-#        pn_dest_host: "166.68.224.45"                  # snmp dest host.
-#      register: output
-#    - debug:
-#        var: output
+
+# This task is to create/delete snmp trap sink.
+# It uses pn_snmp_trap_sink.py module from library/ directory.
+- name: snmp trap sink module
+  hosts: spine, leaf
+  tags: snmp-trap-sink
+
+  tasks:
+    - name: snmp trap sink functionality
+      pn_snmp_trap_sink:
+        pn_action: "create"
+        pn_cliswitch: "{{ inventory_hostname }}"        # Name of the switch on which this task is currently getting executed.
+        pn_community: "F4u1tMgmt"                        # snmp community string.
+        pn_type: "TRAP_TYPE_V2_INFORM"                  # snmp trap type. Default: "TRAP_TYPE_V2C_TRAP". choices: ['TRAP_TYPE_V1_TRAP', 'TRAP_TYPE_V2C_TRAP', 'TRAP_TYPE_V2_INFORM'].
+        pn_dest_host: "166.68.224.45"                  # snmp dest host.
+      register: output
+    - debug:
+        var: output
 
 
 # This task is to create/modify snmp vacm.
@@ -1650,9 +1385,6 @@
 - name: snmp vacm module
   hosts: spine, leaf
   tags: snmp-vacm
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: snmp vacm functionality
@@ -1674,9 +1406,6 @@
   hosts: spine, leaf
   tags: snmp-vacm
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: snmp vacm functionality
       pn_snmp_vacm:
@@ -1696,9 +1425,6 @@
 - name: admin syslog module
   hosts: spine, leaf
   tags: admin-syslog
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: admin-syslog functionality
@@ -1720,9 +1446,6 @@
   hosts: spine[0]
   tags: admin-syslog
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: admin-syslog functionality
       pn_admin_syslog:
@@ -1743,9 +1466,6 @@
   hosts: spine[0]
   tags: role
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: role functionality
       pn_role:
@@ -1763,9 +1483,6 @@
 - name: Modify vflow table profile
   hosts: spine[0]
   tags: vflow-table-profile
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: Modify vflow table profile
@@ -1785,9 +1502,6 @@
   hosts: all
   tags: igmp-snooping
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: "Modify IGMP Snooping"
       pn_igmp_snooping:
@@ -1801,16 +1515,13 @@
         var: output
 
 
-#Configure manually through CLI
+## Configure manually through CLI
 ## This task is to create/delete/modify cpu class.
 ## It uses pn_mgmt_cpu_class.py module from library/ directory.
 #- name: Modify cpu mgmt class
 #  hosts: spine, leaf
 #  tags: cpu-mgmt-class
-
-#  vars_files:
-#  - cli_vault.yml
-
+#
 #  tasks:
 #    - name: Modify cpu mgmt class
 #      pn_cpu_mgmt_class: pn_action="modify" pn_name={{ item.name }} pn_rate_limit={{ item.rate_limit }}
@@ -1825,17 +1536,14 @@
 #      register: output
 #    - debug:
 #        var: output
-
-
+#
+#
 ## This task is to create/delete/modify cpu class.
 ## It uses pn_mgmt_cpu_class.py module from library/ directory.
 #- name: Modify cpu mgmt class
 #  hosts: spine, leaf
 #  tags: cpu-mgmt-class
-
-#  vars_files:
-#  - cli_vault.yml
-
+#
 #  tasks:
 #    - name: Modify cpu mgmt class
 #      pn_cpu_mgmt_class: pn_action="modify" pn_name={{ item.name }} pn_rate_limit={{ item.rate_limit }} pn_burst_size=‘15000’
@@ -1853,9 +1561,6 @@
   hosts: spine[0]
   tags: user-create
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: "Configure user"
       pn_user:
@@ -1869,14 +1574,79 @@
         var: output
 
 
+# This task is for configuring vflow-system.
+# It uses the pn_vflow_system.py module.
+- name: "Configure vflow-system"
+  hosts: spine, leaf
+  tags: system-vflow
+
+  tasks:
+    - name: "Configure vflow-system"
+      pn_vflow_system:
+        pn_action: "modify"
+        pn_name: "{{ item }}"
+        pn_enable: False
+      with_items:
+        - "System-S"
+        - "System-R"
+        - "System-F"
+      register: output
+    - debug:
+        var: output
+
+
+
+# This task is to create switch routes
+# It uses the pn_switch_route.py module
+- name: "Configure switch-route"
+  hosts: all
+  tags: switch-route
+
+  tasks:
+    - name: "Configure switch-route"
+      pn_switch_route:
+        pn_action: "create"
+        pn_network: "0.0.0.0/0"
+        pn_gateway_ip: "159.67.205.129"
+        pn_nic: "vdata0"
+        pn_metric: "1"
+      register: output
+    - debug:
+        var: output
+
+
+# Add in-ban-ipv6 to all the switches
+# This task is to create/modify switch configs.
+# It uses pn_switch_setup.py module from library/ directory.
+- name: Modify in-band network
+  hosts: spine[0]
+  tags: inband-ipv6
+
+  tasks:
+    - name: Modify switch inband ipv6
+      pn_switch_setup:
+        pn_action: "modify"
+        pn_cliswitch: "{{ item.pn_cliswitch }}"
+        pn_in_band_ip6: "{{ item.ip }}"
+      with_items:
+        - {pn_cliswitch: 'tmtrflaan-de60116', ip: '2620:0:1651:107::4/64'}
+        - {pn_cliswitch: 'tmtrflaan-de60216', ip: '2620:0:1651:107::5/64'}
+        - {pn_cliswitch: 'tmtrflaan-de60316', ip: '2620:0:1651:107::6/64'}
+        - {pn_cliswitch: 'tmtrflaan-de60416', ip: '2620:0:1651:107::7/64'}
+        - {pn_cliswitch: 'tmtrflaan-we50116', ip: '2620:0:1651:107::8/64'}
+        - {pn_cliswitch: 'tmtrflaan-we50216', ip: '2620:0:1651:107::9/64'}
+        - {pn_cliswitch: 'tmtrflaan-we50316', ip: '2620:0:1651:107::10/64'}
+        - {pn_cliswitch: 'tmtrflaan-we50416', ip: '2620:0:1651:107::11/64'}
+      register: output
+    - debug:
+        var: output
+
+
 # This task is to create/delete dscp-map.
 # It uses pn_dscp_map.py module from library/ directory.
 - name: dscp map  module
   hosts: spine, leaf
   tags: dscp-map
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: dscp map create
@@ -1894,9 +1664,6 @@
 - name: dscp map pri map module
   hosts: spine, leaf
   tags: dscp-map-pri-map
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: dscp map pri map modify
@@ -1921,9 +1688,6 @@
   hosts: spine, leaf
   tags: port-config
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: port config modify
       pn_port_config:
@@ -1942,9 +1706,6 @@
   hosts: spine, leaf
   tags: port-cos-bw
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: port cos bw modify
       pn_port_cos_bw:
@@ -1953,7 +1714,6 @@
         pn_port: "all"                                  # Specify the port/ports to be modified.
         pn_cos: "5"                                     # Specify the cos.
         pn_min_bw_guarantee: "20"                       # Specify the min bw guarentee.
-        pn_weight: "20"                                 # Specify the weight.
       register: output
     - debug:
         var: output
@@ -1964,9 +1724,6 @@
 - name: port cos bw module
   hosts: spine, leaf
   tags: port-cos-bw
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: port cos bw modify
@@ -1987,9 +1744,6 @@
   hosts: spine, leaf
   tags: port-cos-bw
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: port cos bw modify
       pn_port_cos_bw:
@@ -2008,9 +1762,6 @@
 - name: port cos bw module
   hosts: spine, leaf
   tags: port-cos-bw
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: port cos bw modify
@@ -2031,9 +1782,6 @@
   hosts: spine, leaf
   tags: port-cos-bw
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: port cos bw modify
       pn_port_cos_bw:
@@ -2052,9 +1800,6 @@
 - name: port cos rate setting module
   hosts: spine, leaf
   tags: port-cos-rate-setting
-
-  vars_files:
-  - cli_vault.yml
 
   tasks:
     - name: port cos bw modify
@@ -2075,86 +1820,159 @@
         var: output
 
 
-# This task is for configuring vflows.
-# It uses the pn_vflow_system.py module.
-- name: Create vflows
-  hosts: leaf[0], leaf[1]
-  tags: vflow-pn
-
-  vars_files:
-  - cli_vault.yml
+# This task is to enable cpu class.
+# It uses pn_system_ettings.py module from library/ directory.
+# Enable cpu-class 
+- name: Enable cpu class
+  hosts: spine, leaf
+  tags: system-settings
 
   tasks:
-    - name: create vflow
-      pn_vflow:
-        pn_action: "create"
-        pn_name: "block_pn_mac"
-        pn_scope: "local"
-        pn_inport: "2,5"
-        pn_burst_size: "auto"
-        pn_precedence: "15"
-        pn_src_mac: "66:0e:00:00:00:00"
-        pn_src_mac_mask: "ff:ff:00:00:00:00"
-        pn_vflow_action: "drop-cancel-trap"
-        pn_table_name: "System-L1-L4-Tun-1-0"
+    - name: Enable cpu class
+      pn_system_settings:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from cli_vault.yml).
+        pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
+        pn_action: "modify"                            # Specify the action. choices=['modify']
+        pn_cpu_class_enable: True                      # Specify to enable/disable cpu class.
       register: output
     - debug:
         var: output
+    - wait_for_connection:
+        delay: 120
+        sleep: 20
+        timeout: 300
 
-
-# This task is for configuring vflow-system.
-# It uses the pn_vflow_system.py module.
-- name: "Configure vflow-system"
-  hosts: leaf[0], leaf[1]
-  tags: system-vflow
-
-  vars_files:
-  - cli_vault.yml
+# This task is to create/delete/modify cpu class.
+# It uses pn_cpu_class.py module from library/ directory.
+# Enable hog-protect and set rate-limit on cpu classes.
+- name: Modify cpu class
+  hosts: spine,leaf
+  tags: cpu-class
 
   tasks:
-    - name: "Configure vflow-system"
-      pn_vflow_system:
+    - name: Modify cpu class
+      pn_cpu_class:
         pn_action: "modify"
-        pn_name: "{{ item }}"
-        pn_enable: False
+        pn_name: "{{ item.name }}"
+        pn_hog_protect: "enable"
+        pn_rate_limit: "{{ item.rate }}"
       with_items:
-        - "System-S"
-        - "System-R"
-        - "System-F"
+        - {name: 'ospf', rate: '1000'}
+        - {name: 'bgp', rate: '1000'}
+        - {name: 'lacp', rate: '1000'}
+        - {name: 'vrrp', rate: '1000'}
+        - {name: 'local-subnet', rate: '1000'}
+        - {name: 'stp', rate: '1000'}
+        - {name: 'bfd', rate: '1000'}
+        - {name: 'arp', rate: '1000'}
+        - {name: 'icmp', rate: '100'}
       register: output
     - debug:
         var: output
+    - pause:
+        seconds: 2
 
 
-# This task is to create switch routes
-# It uses the pn_switch_route.py module
-- name: "Configure switch-route"
-  hosts: all
-  tags: switch-route
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - name: "Configure switch-route"
-      pn_switch_route:
-        pn_action: "create"
-        pn_network: "0.0.0.0/0"
-        pn_gateway_ip: "159.67.205.129"
-        pn_nic: "vdata0"
-        pn_metric: "1"
-      register: output
-    - debug:
-        var: output
-
-
+## This task is for configuring vflows.
+## It uses the pn_vflow_system.py module.
+#- name: Create vflows
+#  hosts: leaf[0]
+#  tags: vflow-pn
+#
+#  tasks:
+#    - name: create vflow
+#      pn_vflow:
+#        pn_action: "create"
+#        pn_name: "loopback-inband-ping"
+#        pn_scope: "fabric"
+#        pn_proto: "icmp"
+#        pn_burst_size: "auto"
+#        pn_precedence: "15"
+#        pn_table_name: "System-L1-L4-Tun-1-0"
+#        pn_cpu_class: "icmp"
+#      register: output
+#    - debug:
+#        var: output
+#
+#
+## This task is for configuring vflows.
+## It uses the pn_vflow_system.py module.
+#- name: Create vflows
+#  hosts: leaf[0]
+#  tags: vflow-pn
+#
+#  tasks:
+#    - name: create vflow
+#      pn_vflow:
+#        pn_action: "create"
+#        pn_name: "loopback-inband-ssh"
+#        pn_scope: "fabric"
+#        pn_dst_port: "22"
+#        pn_proto: "tcp"
+#        pn_burst_size: "auto"
+#        pn_precedence: "15"
+#        pn_table_name: "System-L1-L4-Tun-1-0"
+#        pn_cpu_class: "icmp"
+#      register: output
+#    - debug:
+#        var: output
+#
+#
+## This task is for configuring vflows.
+## It uses the pn_vflow_system.py module.
+#- name: Create vflows
+#  hosts: leaf[0]
+#  tags: vflow-pn
+#
+#  tasks:
+#    - name: create vflow
+#      pn_vflow:
+#        pn_action: "create"
+#        pn_name: "loopback-inband-snmp"
+#        pn_scope: "fabric"
+#        pn_dst_port: "161"
+#        pn_proto: "udp"
+#        pn_burst_size: "auto"
+#        pn_precedence: "15"
+#        pn_table_name: "System-L1-L4-Tun-1-0"
+#        pn_cpu_class: "icmp"
+#      register: output
+#    - debug:
+#        var: output
+#
+#
+## This task is for configuring vflows.
+## It uses the pn_vflow_system.py module.
+#- name: Create vflows
+#  hosts: leaf[0]
+#  tags: vflow-pn
+#
+#  tasks:
+#    - name: create vflow
+#      pn_vflow:
+#        pn_action: "create"
+#        pn_name: "loopback-inband-ping6"
+#        pn_scope: "fabric"
+#        pn_src_port: "36864"
+#        pn_src_port_mask: "0xef00"
+#        pn_proto: "icmpv6"
+#        pn_burst_size: "auto"
+#        pn_precedence: "15"
+#        pn_table_name: "System-L1-L4-Tun-1-0"
+#        pn_cpu_class: "icmpv6"
+#      register: output
+#    - debug:
+#        var: output
+#
+#
+#
+## Pluribus TACACS
 ## This task is to create/delete/modify aaa-tacacs.
 ## It uses pn_aaa_tacacs.py module from library/ directory.
 #- name: aaa tacacs module
 #  hosts: spine[0]
-#
-#  vars_files:
-#  - cli_vault.yml
+#  tags: aaa-tacacs-local
 #
 #  tasks:
 #    - name: aaa-tacacs functionality
@@ -2162,9 +1980,43 @@
 #        pn_action: "create"                             #aaa tacacs configuration command: create/delete/modify.
 #        pn_scope: "fabric"                               # local/fabric
 #        pn_name: "tacacs"
+#        pn_server: "cisco-ise.pluribusnetworks.com"
+#        pn_port: "49"
+#        pn_secret: "verizon"
+#        pn_priority: "1"
+#        pn_authen_method: "pap"                              # pap/chap/ms-chap
+#        pn_service: "shell"
+#        #pn_service_shell:
+#        #pn_service_vtysh:
+#        pn_authen: True
+#        pn_authen_local: True
+#        pn_acct_local: True
+#        pn_sess_acct: True
+#        pn_cmd_acct: True
+#        pn_cmd_author: True
+#        pn_sess_author: True
+#        pn_author_local: True
+#      register: output
+#    - debug:
+#        var: output
+
+
+## Verizon TACACS
+## This task is to create/delete/modify aaa-tacacs.
+## It uses pn_aaa_tacacs.py module from library/ directory.
+#- name: aaa tacacs module
+#  hosts: spine[0]
+#  tags: aaa-tacacs
+#
+#  tasks:
+#    - name: aaa-tacacs functionality
+#      pn_aaa_tacacs:
+#        pn_action: "create"                             #aaa tacacs configuration command: create/delete/modify.
+#        pn_scope: "fabric"                               # local/fabric
+#        pn_name: "vz-tacacs1"
 #        pn_server: "138.83.66.217"
 #        pn_port: "49"
-#        pn_secret: "verizon"
+#        pn_secret: "{{ tacacs_pass }}"
 #        pn_priority: "1"
 #        pn_authen_method: "pap"                              # pap/chap/ms-chap
 #        pn_service: "pluribus-shell"
@@ -2181,26 +2033,23 @@
 #      register: output
 #    - debug:
 #        var: output
-
-
+#
+#
 ## This task is to create/delete/modify aaa-tacacs.
 ## It uses pn_aaa_tacacs.py module from library/ directory.
 #- name: aaa tacacs module
 #  hosts: spine[0]
-#
-#  vars_files:
-#  - cli_vault.yml
 #
 #  tasks:
 #    - name: aaa-tacacs functionality
 #      pn_aaa_tacacs:
 #        pn_action: "create"                             #aaa tacacs configuration command: create/delete/modify.
 #        pn_scope: "fabric"                               # local/fabric
-#        pn_name: "tacacs"
+#        pn_name: "vz-tacacs2"
 #        pn_server: "137.188.75.11"
 #        pn_port: "49"
-#        pn_secret: "verizon"
-#        pn_priority: "1"
+#        pn_secret: "{{ tacacs_pass }}"
+#        pn_priority: "2"
 #        pn_authen_method: "pap"                              # pap/chap/ms-chap
 #        pn_service: "pluribus-shell"
 #        #pn_service_shell:
@@ -2216,26 +2065,23 @@
 #      register: output
 #    - debug:
 #        var: output
-
-
+#
+#
 ## This task is to create/delete/modify aaa-tacacs.
 ## It uses pn_aaa_tacacs.py module from library/ directory.
 #- name: aaa tacacs module
 #  hosts: spine[0]
-#
-#  vars_files:
-#  - cli_vault.yml
 #
 #  tasks:
 #    - name: aaa-tacacs functionality
 #      pn_aaa_tacacs:
 #        pn_action: "create"                             #aaa tacacs configuration command: create/delete/modify.
 #        pn_scope: "fabric"                               # local/fabric
-#        pn_name: "tacacs"
+#        pn_name: "vz-tacacs3"
 #        pn_server: "162.115.11.11"
 #        pn_port: "49"
-#        pn_secret: "verizon"
-#        pn_priority: "1"
+#        pn_secret: "{{ tacacs_pass }}"
+#        pn_priority: "3"
 #        pn_authen_method: "pap"                              # pap/chap/ms-chap
 #        pn_service: "pluribus-shell"
 #        #pn_service_shell:
@@ -2251,3 +2097,4 @@
 #      register: output
 #    - debug:
 #        var: output
+

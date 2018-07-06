@@ -631,7 +631,7 @@ def toggle(module, curr_switch, toggle_ports, toggle_speed, port_speed, splitter
     cli += 'port %s ' % undiscovered_ports
     cli += 'speed %s enable' % port_speed
     run_cli(module, cli)
-    output += '%s: Toggle completed successfully ' % curr_switch
+    output += 'Toggle completed successfully '
 
     return output
 
@@ -642,6 +642,7 @@ def toggle_ports(module, curr_switch):
     :param module: The Ansible module to fetch input parameters.
     :param curr_switch on which toggle discovery happens.
     """
+    output = ''
     cli = pn_cli(module)
     clicopy = cli
     g_toggle_ports = {
@@ -700,9 +701,10 @@ def toggle_ports(module, curr_switch):
 
     for port_speed, port_info in g_toggle_ports.iteritems():
         if port_info['ports']:
-            toggle(module, curr_switch, port_info['ports'], port_info['speeds'], port_speed,
-                   g_splitter_ports, g_quad_ports.get(port_speed, []))
+            output += toggle(module, curr_switch, port_info['ports'], port_info['speeds'], port_speed,
+                             g_splitter_ports, g_quad_ports.get(port_speed, []))
 
+    return output
 
 
 def assign_ipv6_address(module, ipv6_address, current_switch, ip_type):
@@ -923,11 +925,12 @@ def main():
         })
 
     # Toggle 40g/100g ports to 10g/25g
-    if toggle_flag and toggle_ports(module, module.params['pn_current_switch']):
+    if toggle_flag:
+        out = toggle_ports(module, module.params['pn_current_switch'])
         CHANGED_FLAG.append(True)
         results.append({
             'switch': current_switch,
-            'output': 'Toggled 40G/100g ports to 10G/25g '
+            'output': out
         })
 
     # Assign in-band ipv4.

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI L3 VRRP """
+""" PN CLI L3 VRRP THIRD PARTY """
 
 #
 # This file is part of Ansible
@@ -50,7 +50,7 @@ options:
 EXAMPLES = """
 - name: Configure L3 VRRP
   pn_ztp_l3_vrrp:
-    pn_spine_list: "{{ groups['spine'] }}"
+    pn_spine_list: "{{ groups['third_party_spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
     pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
@@ -232,9 +232,9 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
                 switch, ip_vip, vrouter_name
             )
 
+    ipv4 = list_ips[0]
 
-    if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-        ipv4 = list_ips[0]
+    if ipv4:
         cli = clicopy
         cli += ' vrouter-ospf-show'
         cli += ' network %s format switch no-show-headers ' % ipv4
@@ -255,17 +255,11 @@ def create_vrouter_interface(module, switch, vlan_id, vrrp_id,
                 CHANGED_FLAG.append(True)
 
     if addr_type == 'ipv4_ipv6':
-        ipv6 = list_ips[1]
-    elif addr_type == 'ipv6':
-        ipv6 = list_ips[0]
 
-    if addr_type == 'ipv4_ipv6' or addr_type == 'ipv6':
+        ipv6 = list_ips[1]
         cli = clicopy
         cli += 'vrouter-interface-show vrouter-name %s' % vrouter_name
-        if addr_type == 'ipv4_ipv6':
-            cli += ' ip2 %s format nic no-show-headers ' % ipv6
-        if addr_type == 'ipv6':
-            cli += ' ip %s format nic no-show-headers ' % ipv6
+        cli += ' ip2 %s format nic no-show-headers ' % ipv6
         nic = run_cli(module, cli).split()
         nic = list(set(nic))
         nic.remove(vrouter_name)
@@ -325,7 +319,6 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, ip_v6, non_cluster_leaf, vl
     """
     global CHANGED_FLAG
     vrouter_name = non_cluster_leaf + '-vrouter'
-    addr_type = module.params['pn_addr_type']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -340,12 +333,9 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, ip_v6, non_cluster_leaf, vl
         cli += 'switch ' + non_cluster_leaf
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' vlan ' + vlan_id
-        if addr_type == 'ipv4' or  addr_type == 'ipv4_ipv6':
-            cli += ' ip ' + ip
+        cli += ' ip ' + ip
         if module.params['pn_addr_type'] == 'ipv4_ipv6':
             cli += ' ip2 ' + ip_v6
-        if addr_type == 'ipv6':
-            cli += ' ip ' + ip_v6
         if module.params['pn_jumbo_frames'] == True:
             cli += ' mtu 9216'
         if module.params['pn_pim_ssm'] == True:
@@ -383,15 +373,14 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
     output = create_cluster(module, node2, name, node1, node2)
     output += create_vlan(module, vlan_id, node2)
 
-    if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-        list_vips.append(vrrp_ip)
-        ip_addr = vrrp_ip.split('.')
-        fourth_octet = ip_addr[3].split('/')
-        subnet_ipv4 = fourth_octet[1]
-        host_count_ipv4 = int(fourth_octet[0])
-        static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+    list_vips.append(vrrp_ip)
+    ip_addr = vrrp_ip.split('.')
+    fourth_octet = ip_addr[3].split('/')
+    subnet_ipv4 = fourth_octet[1]
+    host_count_ipv4 = int(fourth_octet[0])
+    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
 
-    if addr_type == 'ipv4_ipv6' or addr_type == 'ipv6':
+    if addr_type == 'ipv4_ipv6':
         list_vips.append(vrrp_ipv6)
         ipv6 = vrrp_ipv6.split('/')
         subnet_ipv6 = ipv6[1]
@@ -403,11 +392,10 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip, vrrp_ipv6,
 
     for switch in switch_list:
         list_ips = []
-        if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-            host_count_ipv4 = host_count_ipv4 + 1
-            vrrp_ipv4 = static_ip + str(host_count_ipv4) + '/' + subnet_ipv4
-            list_ips.append(vrrp_ipv4)
-        if addr_type == 'ipv4_ipv6' or addr_type == 'ipv6':
+        host_count_ipv4 = host_count_ipv4 + 1
+        vrrp_ipv4 = static_ip + str(host_count_ipv4) + '/' + subnet_ipv4
+        list_ips.append(vrrp_ipv4)
+        if addr_type == 'ipv4_ipv6':
             host_count_ipv6 = host_count_ipv6 + 1
             ipv6[-1] = str(hex(host_count_ipv6)[2:])
             vrrp_ipv6_ip = ':'.join(ipv6) + '/' + subnet_ipv6
@@ -446,7 +434,6 @@ def configure_vrrp(module, csv_data):
     """
     output = ''
     vrrp_ipv6 = ''
-    vrrp_ip = ''
 
     csv_data = csv_data.strip()
     csv_data_list = csv_data.split('\n')
@@ -460,9 +447,8 @@ def configure_vrrp(module, csv_data):
             elements = filter(None, elements)
             switch_list = []
             vlan_id = elements.pop(0).strip()
-            if module.params['pn_addr_type'] == 'ipv4_ipv6' or module.params['pn_addr_type'] == 'ipv4':
-                vrrp_ip = elements.pop(0).strip()
-            if module.params['pn_addr_type'] == 'ipv4_ipv6' or module.params['pn_addr_type'] == 'ipv6':
+            vrrp_ip = elements.pop(0).strip()
+            if module.params['pn_addr_type'] == 'ipv4_ipv6':
                 vrrp_ipv6 = elements.pop(0).strip()
             leaf_switch_1 = elements.pop(0).strip()
             if module.params['pn_current_switch'] == leaf_switch_1:
@@ -493,7 +479,7 @@ def main():
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
             pn_current_switch=dict(required=True, type='str'),
-            pn_pim_ssm=dict(required=False, type='bool', deafult=False),
+            pn_pim_ssm=dict(required=False, type='bool', default=False),
             pn_jumbo_frames=dict(required=False, type='bool', default=False),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_addr_type=dict(required=False, type='str',
@@ -528,7 +514,7 @@ def main():
     module.exit_json(
         unreachable=False,
         task='Configure L3 vrrp',
-        msg='L3 vrrp configuration succeeded',
+        msg='L3 third party vrrp configuration succeeded',
         summary=results,
         exception='',
         failed=False,
@@ -537,3 +523,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

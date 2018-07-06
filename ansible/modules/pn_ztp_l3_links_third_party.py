@@ -401,6 +401,47 @@ def delete_trunk(module, switch, switch_port, peer_switch):
             return ' %s: Deleted %s trunk successfully \n' % (switch, trunk[0])
 
 
+def assign_loopback_ip(module, loopback_address):
+    """
+    Method to add loopback interface to vrouters.
+    :param module: The Ansible module to fetch input parameters.
+    :param loopback_address: The loopback ip to be assigned.
+    :return: String describing if loopback ips got assigned or not.
+    """
+    global CHANGED_FLAG
+    output = ''
+    address = loopback_address.split('.')
+    static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    static_part += str(address[2]) + '.'
+
+    cli = pn_cli(module)
+    clicopy = cli
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+
+    vrouter_count = int(address[3].split('/')[0])
+    for switch in switch_list:
+        vrouter = switch + '-vrouter'
+        ip = static_part + str(vrouter_count)
+
+        cli = clicopy
+        cli += ' vrouter-loopback-interface-show ip ' + ip
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli).split()
+
+        if vrouter not in existing_vrouter:
+            cli = clicopy
+            cli += ' vrouter-loopback-interface-add vrouter-name '
+            cli += vrouter
+            cli += ' ip ' + ip
+            run_cli(module, cli)
+            CHANGED_FLAG.append(True)
+
+        output += ' %s: Added loopback ip %s to %s \n' % (switch, ip, vrouter)
+        vrouter_count += 1
+
+    return output
+
+
 def finding_initial_ip(module, current_switch, leaf_list):
     """
     Method to find the intial ip of the ipv4 addressing scheme.
@@ -412,19 +453,14 @@ def finding_initial_ip(module, current_switch, leaf_list):
     :return: String describing output of configuration.
     """
     spine_list = list(module.params['pn_spine_list'])
+    routing_protocol = module.params['pn_routing_protocol']
     spine_list = [x.strip() for x in spine_list]
-    spines = ','.join(spine_list)
-    count_output = 0
+    spine_count = len(spine_list)
 
-    cli = pn_cli(module)
-    clicopy = cli
+    if current_switch in leaf_list:
+        leaf_index = leaf_list.index(current_switch)
 
-    for leaf in leaf_list:
-        if leaf.strip() == current_switch.strip():
-            break
-        cli = clicopy
-        cli += " switch %s port-show hostname %s count-output | grep Count" %  (leaf, spines)
-        count_output += int(run_cli(module, cli).split(':')[1].strip())
+    count_output = leaf_index * (spine_count * 2)
 
     return count_output
 
@@ -438,10 +474,8 @@ def auto_configure_link_ips(module):
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     addr_type = module.params['pn_addr_type']
-    if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-        subnet_ipv4 = module.params['pn_subnet_ipv4']
-    if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
-        subnet_ipv6 = module.params['pn_subnet_ipv6']
+    subnet_ipv4 = module.params['pn_subnet_ipv4']
+    subnet_ipv6 = module.params['pn_subnet_ipv6']
     current_switch = module.params['pn_current_switch']
     output = ''
 
@@ -451,9 +485,6 @@ def auto_configure_link_ips(module):
     if current_switch in leaf_list:
         # Disable auto trunk on all switches.
         modify_auto_trunk_setting(module, current_switch, 'disable')
-        for spine in spine_list:
-            # Disable auto trunk.
-            modify_auto_trunk_setting(module, spine, 'disable')
 
         # Get the list of available link ips to assign.
         count_output = finding_initial_ip(module, current_switch, leaf_list)
@@ -463,11 +494,7 @@ def auto_configure_link_ips(module):
                                                                   module.params['pn_cidr_ipv4'],
                                                                   subnet_ipv4)
 
-            diff = 32 - int(subnet_ipv4)
-            count = (1 << diff) - 4
-            count = (count + 2) if count > 0 else 2
-            count = count * count_output
-            available_ips_ipv4 = available_ips_ipv4[count:]
+            available_ips_ipv4 = available_ips_ipv4[count_output:]
 
         # Get the list of available link ips to assign.
         if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
@@ -475,7 +502,8 @@ def auto_configure_link_ips(module):
             available_ips_ipv6 = calculate_link_ip_addresses_ipv6(module.params['pn_net_address_ipv6'],
                                                                   module.params['pn_cidr_ipv6'],
                                                                   subnet_ipv6, get_count)
-            for i in range(count_output):
+
+            for i in range(count_output - (leaf_list.index(current_switch) * 2)):
                 available_ips_ipv6.next()
 
         for spine in spine_list:
@@ -524,9 +552,6 @@ def auto_configure_link_ips(module):
                     ip_ipv4 = available_ips_ipv4[0]
                     available_ips_ipv4.remove(ip_ipv4)
 
-                delete_trunk(module, spine, rport, current_switch)
-                output += create_interface(module, spine, ip_ipv4, ip_ipv6, rport, addr_type)
-
                 leaf_port.remove(lport)
                 if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
                     ip_ipv6 = (ip_list[1] if subnet_ipv6 == '127' else ip_list[2])
@@ -547,9 +572,6 @@ def auto_configure_link_ips(module):
 
         # Enable auto trunk on all switches.
         modify_auto_trunk_setting(module, current_switch, 'enable')
-        for spine in spine_list:
-            # Enable auto trunk.
-            modify_auto_trunk_setting(module, spine, 'enable')
 
     return output
 
@@ -561,12 +583,13 @@ def main():
             pn_current_switch=dict(required=False, type='str'),
             pn_addr_type=dict(required=False, type='str',
                               choices=['ipv4', 'ipv6', 'ipv4_ipv6'], default='ipv4'),
-            pn_net_address_ipv4=dict(required=False, type='str', aliases=['pn_ipv4_start_address'],
-                                     default='172.168.1.1'),
+            pn_net_address_ipv4=dict(required=False, type='str', aliases=['pn_ipv4_start_address']),
             pn_net_address_ipv6=dict(required=False, type='str', aliases=['pn_ipv6_start_address']),
-            pn_cidr_ipv4=dict(required=False, type='str', default='24'),
+            pn_cidr_ipv4=dict(required=False, type='str'),
             pn_cidr_ipv6=dict(required=False, type='str'),
-            pn_subnet_ipv4=dict(required=False, type='str', default='31'),
+            pn_routing_protocol=dict(required=False, type='str',
+                                     choices=['ebgp','ospf'], default='ospf'),
+            pn_subnet_ipv4=dict(required=False, type='str'),
             pn_subnet_ipv6=dict(required=False, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
