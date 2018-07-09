@@ -22,6 +22,7 @@ import shlex
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pn_nvos import pn_cli
+from collections import OrderedDict
 
 DOCUMENTATION = """
 ---
@@ -344,7 +345,7 @@ def find_nodes(module, vlan_id):
     """
     cli = pn_cli(module)
     clicopy = cli
-    all_nodes = {}
+    all_nodes = OrderedDict()
     cluster_pair = {}
 
     cli += 'cluster-show format cluster-node-1,cluster-node-2, parsable-delim ,'
@@ -357,7 +358,7 @@ def find_nodes(module, vlan_id):
 
     cli = clicopy
     cli += 'vrouter-interface-show vlan %s format ' % vlan_id
-    cli += 'ip,is-vip,is-primary,vlan parsable-delim ,'
+    cli += 'ip,is-vip,is-primary,vlan sort-asc vrouter-name parsable-delim ,'
     nodes = run_cli(module, cli).strip().split('\n')
     for node in nodes:
         node = node.split(',')
