@@ -12,6 +12,7 @@
         pn_current_switch: "{{ inventory_hostname }}"       # The name of the current executing switch
         pn_spine_list: "{{ groups['spine'] }}"              # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"                # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_vrrp_id: "{{ pn_vrrp_id }}"                      # Vrrp-id for the vrouters.
         pn_pim_ssm: "{{ pn_pim_ssm }}"                      # Variable to specify pim_ssm for ospf
         pn_ospf_redistribute: "{{ pn_ospf_redistribute }}"  # Variable to configure ospf redistribute
       register: vrouter_out                                 # Variable to hold/register output of the above tasks.
