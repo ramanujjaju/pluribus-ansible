@@ -9,6 +9,8 @@
   tasks:
     - name: Auto accept EULA
       pn_ztp_eula_accept:
+        pn_cliusername: "{{ ansible_user }}"                                                                          # Cli username (value comes from extra vars).
+        pn_clipassword: "{{ ansible_ssh_pass }}"                                                                      # Cli password (value comes from extra vars).
         pn_spine_list: "{{ groups['spine'] | default([]) }}"                                                          # List of spine switches
         pn_leaf_list: "{{ groups['leaf'] | default([])}}"                                                             # List of leaf switches
         pn_leaf_ips: "{{ groups['leaf'] | default('') | map('extract', hostvars, ['ansible_host']) | join(',') }}"    # IPs of leaf switches separated by comma
@@ -113,6 +115,8 @@
   tasks:
     - name: System flow setting
       pn_sys_flow_setting:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from extra vars).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from extra vars).
         pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
         pn_action: "modify"                            # Specify the action. choices=['modify']
         pn_num_ipv6_128b_entries: "256"                # Specify pn_num_ipv6_128b_entries value.
@@ -134,6 +138,8 @@
   tasks:
     - name: Enable cosq weight auto
       pn_system_settings:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from extra vars).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from extra vars).
         pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
         pn_action: "modify"                            # Specify the action. choices=['modify']
         pn_cosq_weight_auto: True                      # Specify to enable/disable cpu class.
@@ -1820,6 +1826,8 @@
   tasks:
     - name: Enable cpu class
       pn_system_settings:
+        pn_cliusername: "{{ ansible_user }}"           # Cli username (value comes from extra vars).
+        pn_clipassword: "{{ ansible_ssh_pass }}"       # Cli password (value comes from extra vars).
         pn_cliswitch: "{{ inventory_hostname }}"       # Name of the switch on which this task is currently getting executed.
         pn_action: "modify"                            # Specify the action. choices=['modify']
         pn_cpu_class_enable: True                      # Specify to enable/disable cpu class.

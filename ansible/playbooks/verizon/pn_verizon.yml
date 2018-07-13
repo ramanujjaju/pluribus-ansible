@@ -10,9 +10,6 @@
   hosts: localhost
   tags: eula-accept
 
-  vars_files:
-  - cli_vault.yml
-
   tasks:
     - name: Auto accept EULA
       pn_ztp_eula_accept:
@@ -42,24 +39,24 @@
   tasks:
     - name: Disable STP, enable ports and create/join fabric
       pn_ztp_initial_setup:
-        pn_fabric_name: "hmplabpsq-fabric"             # Name of the fabric to create/join.
+        pn_fabric_name: "hmplabpsq-fabric-test"             # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
-        pn_inband_ipv4: '104.255.62.40/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
+        pn_inband_ipv4: '192.168.1.1/24'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
         #pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
-        #pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
+        pn_mgmt_ipv6: '2620:0:104:253:55::50/128'      # mgmt ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
         pn_static_setup: 'false'                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
-        pn_mgmt_ip_subnet: '27'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
-        pn_gateway_ip: '104.255.62.1'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
-        pn_dns_ip: '104.255.40.101'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
+        pn_mgmt_ip_subnet: '16'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: '10.110.0.1'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+        pn_dns_ip: '10.135.2.13'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
         #pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
-        pn_domain_name: 'hemplab.verizon.com'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
-        pn_ntp_server: '146.13.191.204'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
+        pn_domain_name: 'pluribusnetworks.com'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+        pn_ntp_server: '0.us.pool.ntp.org'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
         pn_stp: True                                   # Specify True if you want to enable STP at the end. Default: False.
         pn_autotrunk: disable                          # Flag to enable/disable auto-trunk setting.
