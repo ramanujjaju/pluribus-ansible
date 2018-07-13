@@ -770,6 +770,7 @@ def make_interface_passive(module, current_switch):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
+    addr_type = module.params['pn_addr_type']
 
     vrname = "%s-vrouter" % current_switch
     cli = clicopy

@@ -19,6 +19,7 @@
 
 
 
+
 # This task is to configure initial ZTP setup on all switches.
 # It uses pn_ztp_initial_setup.py module from library/ directory.
 # If the tasks fails then it will retry as specified by retries count.
@@ -31,22 +32,24 @@
   tasks:
     - name: Disable STP, enable ports and create/join fabric
       pn_ztp_initial_setup:
-        pn_fabric_name: "tmtrflaan-fabric"             # Name of the fabric to create/join.
+        pn_fabric_name: "hmplabpsq-fabric-test"             # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_port_speed: True                     # Flag to indicate if 40g/100g ports should be converted to 10g/25g ports or not.
-        pn_inband_ipv4: '159.67.205.132/27'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
+        pn_inband_ipv4: '192.168.1.1/24'             # Inband ips to be assigned to switches starting with this value. Default: 192.168.0.1/24.
+        #pn_inband_ipv6: '2620:0:167f:b010::10/64'      # Inband ipv6 to be assigned to switches starting with this value.
+        pn_mgmt_ipv6: '2620:0:104:253:55::50/64'      # mgmt ipv6 to be assigned to switches starting with this value.
         pn_fabric_network: 'mgmt'                      # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: 'mgmt'              # Choices: in-band or mgmt.  Default: mgmt
-        pn_static_setup: True                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
+        pn_static_setup: 'false'                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"               # Specify MGMT-IP value to be assign if pn_static_setup is True.
-        pn_mgmt_ip_subnet: '25'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
-        pn_gateway_ip: '159.67.206.129'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
-        pn_dns_ip: '138.83.67.15'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
-        pn_dns_secondary_ip: '138.83.162.53'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
-        pn_domain_name: 'verizon.com'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
-        pn_ntp_server: '138.83.67.15'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
+        pn_mgmt_ip_subnet: '16'                        # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: '10.110.0.1'                   # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+        pn_dns_ip: '10.135.2.13'                    # Specify DNS-IP value to be assign if pn_static_setup is True.
+        #pn_dns_secondary_ip: '10.20.4.1'               # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
+        pn_domain_name: 'pluribusnetworks.com'          # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+        pn_ntp_server: '0.us.pool.ntp.org'                # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         pn_web_api: True                               # Flag to enable web api. Default: True
         pn_stp: True                                   # Specify True if you want to enable STP at the end. Default: False.
         pn_autotrunk: disable                          # Flag to enable/disable auto-trunk setting.
@@ -55,7 +58,8 @@
       retries: 3                                       # This is the retries count
       delay: 3
     - pause:
-        seconds: 5                                     # Pause playbook execution for specified amount of time.
+        seconds: 2                                     # Pause playbook execution for specified amount of time.
+
 
 
 # This is to enable host ports on all switches.
@@ -568,48 +572,48 @@
         var: output
 
 
-# This task is to create vrouter interface.
-# It uses pn_vrouter_iface.py module from library/ directory.
-# Create SVI interface on Spine 3 for VLAN 490
-- name: vrouter interface modules
-  hosts: spine[2]
-  tags: spine-svi
-  ignore_errors: no
-
-  tasks:
-    - name: Add a vrouter interface
-      pn_vrouter_iface:
-        pn_action: "add"                                # vRouter interface command - add/remove/modify.
-        pn_vrouter: "{{ inventory_hostname }}-vrouter"  # Name of the vrouter.
-        pn_vlan: "490"                                  # Interface vlan.
-        pn_interface_ip: "192.168.3.17/29"                  # IP address for the interface in x.x.x.x/n format.
-        pn_mtu: "9216"                                  # Interface MTU.
-      register: output
-    - debug:
-        var: output
-
-
-# This task is to create vrouter interface.
-# It uses pn_vrouter_iface.py module from library/ directory.
-# Create SVI interface on Spine 4 for VLAN 490
-- name: vrouter interface  modules
-  hosts: spine[3]
-  tags: spine-svi
-  ignore_errors: no
-
-  tasks:
-    - name: Add a vrouter interface
-      pn_vrouter_iface:
-        pn_action: "add"                               # vRouter interface command - add/remove/modify.
-        pn_vrouter: "{{ inventory_hostname }}-vrouter" # Name of the vrouter.
-        pn_vlan: "490"                                 # Interface vlan.
-        pn_interface_ip: "192.168.3.25/29"                # IP address for the interface in x.x.x.x/n format.
-        pn_mtu: "9216"                                 # Interface MTU.
-      register: output
-    - debug:
-        var: output
-
-
+## This task is to create vrouter interface.
+## It uses pn_vrouter_iface.py module from library/ directory.
+## Create SVI interface on Spine 3 for VLAN 490
+#- name: vrouter interface modules
+#  hosts: spine[2]
+#  tags: spine-svi
+#  ignore_errors: no
+#
+#  tasks:
+#    - name: Add a vrouter interface
+#      pn_vrouter_iface:
+#        pn_action: "add"                                # vRouter interface command - add/remove/modify.
+#        pn_vrouter: "{{ inventory_hostname }}-vrouter"  # Name of the vrouter.
+#        pn_vlan: "490"                                  # Interface vlan.
+#        pn_interface_ip: "192.168.3.17/29"                  # IP address for the interface in x.x.x.x/n format.
+#        pn_mtu: "9216"                                  # Interface MTU.
+#      register: output
+#    - debug:
+#        var: output
+#
+#
+## This task is to create vrouter interface.
+## It uses pn_vrouter_iface.py module from library/ directory.
+## Create SVI interface on Spine 4 for VLAN 490
+#- name: vrouter interface  modules
+#  hosts: spine[3]
+#  tags: spine-svi
+#  ignore_errors: no
+#
+#  tasks:
+#    - name: Add a vrouter interface
+#      pn_vrouter_iface:
+#        pn_action: "add"                               # vRouter interface command - add/remove/modify.
+#        pn_vrouter: "{{ inventory_hostname }}-vrouter" # Name of the vrouter.
+#        pn_vlan: "490"                                 # Interface vlan.
+#        pn_interface_ip: "192.168.3.25/29"                # IP address for the interface in x.x.x.x/n format.
+#        pn_mtu: "9216"                                 # Interface MTU.
+#      register: output
+#    - debug:
+#        var: output
+#
+#
 # This task is to add ospf network
 # It uses pn_vrouter_ospf.py module from library/ directory.
 # Add Spine SVI network to OSPF
