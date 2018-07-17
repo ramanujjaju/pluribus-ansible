@@ -8,7 +8,7 @@
 - name: Configure vrouter
   hosts: spine, leaf
   tags: vrouter
-
+  serial: 1
 
   tasks:
     - name: Setup vrouter
@@ -29,6 +29,7 @@
 - name: Configure L3 VRRP
   hosts: leaf
   tags: l3-vrrp
+  serial: 1
 
   tasks:
     # This task is to configure VRRP for Layer 3 fabric.
@@ -57,6 +58,7 @@
 - name: Configure L3 VRRP
   hosts: leaf
   tags: l3-links
+  serial: 1
 
   tasks:
     - name: Auto configure link IPs
@@ -85,6 +87,7 @@
 
 - name: Configure eBGP
   hosts: spine[0]
+  serial: 1
 
   tasks:
     # This task is to configure eBGP.
