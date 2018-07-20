@@ -136,7 +136,7 @@ def main():
                                 if dot_count != 3:
                                     raise socket.error
 
-                                if addr == 0 or addr > 255:
+                                if addr == 0 or addr >= 255:
                                     raise socket.error
 
                                 socket.inet_aton(address)
