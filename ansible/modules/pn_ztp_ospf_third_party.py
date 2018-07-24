@@ -45,7 +45,7 @@ options:
         - Specify list of leaf hosts
       required: False
       type: list
-    pn_cidr_ipv4:
+    pn_ospf_cidr_ipv4:
       description:
         - Specify CIDR value to be used in configuring IPv4 address.
       required: False
@@ -687,7 +687,7 @@ def assign_leafcluster_ospf_interface(module):
     addr_type = module.params['pn_addr_type']
     iospf_v4_range = module.params['pn_iospf_ipv4_range']
     if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-        cidr_v4 = int(module.params['pn_cidr_ipv4'])
+        cidr_v4 = int(module.params['pn_ospf_cidr_ipv4'])
     subnet_v4 = module.params['pn_ospf_subnet_ipv4']
     iospf_v6_range = module.params['pn_iospf_ipv6_range']
     if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
@@ -819,7 +819,7 @@ def main():
             pn_ospf_cost=dict(required=False, type='str', default='10000'),
             pn_iospf_ipv4_range=dict(required=False, type='str',
                                      default=''),
-            pn_cidr_ipv4=dict(required=False, type='str', default='24'),
+            pn_ospf_cidr_ipv4=dict(required=False, type='str', default='24'),
             pn_ospf_subnet_ipv4=dict(required=False, type='str', default='31'),
             pn_iospf_ipv6_range=dict(required=False, type='str',
                                      default=''),

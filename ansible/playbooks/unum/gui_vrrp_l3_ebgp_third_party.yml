@@ -100,8 +100,8 @@
         pn_bfd: True                                       # Indicate if BFD config should be added to eBGP. Default: False.
         pn_bgp_maxpath: "{{ pn_bgp_maxpath }}"             # BGP-MAXPATH value to be assigned to vrouters. Default: 16
         pn_ibgp_ipv4_range: "{{ pn_ibgp_ipv4_range }}"     # Ip range for creating the interfaces between leaf clusters.
-        pn_cidr_ipv4: "{{ pn_cidr_ipv4 }}"                 # subnet count for ebgp ip range
-        pn_subnet_ipv4: "{{ pn_subnet_ipv4 }}"             # ipv4 subnet for ebgp
+        pn_ebgp_cidr_ipv4: "{{ pn_ebgp_cidr_ipv4 }}"       # subnet count for ebgp ip range
+        pn_ebgp_subnet_ipv4: "{{ pn_ebgp_subnet_ipv4 }}"   # ipv4 subnet for ebgp
         pn_bgp_redistribute: "{{ pn_bgp_redistribute }}"   # BGP-REDISTRIBUTE value to be assigned to vrouters. Choices are [none, static, connected, rip, ospf]. Default: none
         pn_bgp_as_range: "{{ pn_bgp_as_range }}"           # BGP-AS-RANGE value to be assigned to vrouters. Default: 65000
         pn_ibgp_vlan: "{{ pn_ibgp_vlan }}"                 # iBGP vlan value to be assigned to vrouter interfaces. Default 4040

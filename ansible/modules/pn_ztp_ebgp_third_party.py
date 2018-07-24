@@ -333,8 +333,8 @@ def assign_ibgp_interface(module, dict_bgp_as):
     addr_type = module.params['pn_address_type']
     ibgp_ipv4_range = module.params['pn_ibgp_ipv4_range']
     if addr_type == 'ipv4' or addr_type == 'ipv4_ipv6':
-        cidr_v4 = int(module.params['pn_cidr_ipv4'])
-    subnet_v4 = module.params['pn_subnet_ipv4']
+        cidr_v4 = int(module.params['pn_ebgp_cidr_ipv4'])
+    subnet_v4 = module.params['pn_ebgp_subnet_ipv4']
     ibgp_ipv6_range = module.params['pn_ibgp_ipv6_range']
     if addr_type == 'ipv6' or addr_type == 'ipv4_ipv6':
         cidr_v6 = int(module.params['pn_cidr_ipv6'])
@@ -710,8 +710,8 @@ def main():
             pn_bgp_maxpath=dict(required=False, type='str', default='16'),
             pn_ibgp_ipv4_range=dict(required=False, type='str',
                                     default='75.75.75.1'),
-            pn_cidr_ipv4=dict(required=False, type='str', default='24'),
-            pn_subnet_ipv4=dict(required=False, type='str', default='31'),
+            pn_ebgp_cidr_ipv4=dict(required=False, type='str', default='24'),
+            pn_ebgp_subnet_ipv4=dict(required=False, type='str', default='31'),
             pn_jumbo_frames=dict(required=False, type='bool', default=False),
             pn_ibgp_ipv6_range=dict(required=False, type='str',
                                     default=''),

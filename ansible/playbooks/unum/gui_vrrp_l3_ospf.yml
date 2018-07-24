@@ -100,8 +100,8 @@
         pn_ospf_v4_area_id: "{{ pn_ospf_v4_area_id }}"            # Area id to configure for ospfv4. Default: 0
         pn_iospf_vlan: "{{ pn_iospf_vlan }}"                      # Vlan for creating the interfaces between leaf clusters. Default:'4040'
         pn_iospf_ipv4_range: "{{ pn_iospf_ipv4_range }}"          # Ip range for creating the interfaces between leaf clusters.
-        pn_cidr_ipv4: "{{ pn_cidr_ipv4 }}"                        # subnet count for iospf ip range
-        pn_subnet_ipv4: "{{ pn_subnet_ipv4 }}"                    # ipv4 subnet for iospf
+        pn_ospf_cidr_ipv4: "{{ pn_ospf_cidr_ipv4 }}"              # subnet count for iospf ip range
+        pn_ospf_subnet_ipv4: "{{ pn_ospf_subnet_ipv4 }}"          # ipv4 subnet for iospf
         pn_area_configure_flag: "{{ pn_area_configure_flag }}"    # Varible to configure area choices=['singlearea', 'dualarea'], default='singlearea'
         pn_pim_ssm: "{{ pn_pim_ssm }}"                            # Variable to specify pim_ssm for ospf
         pn_jumbo_frames: "{{ pn_jumbo_frames }}"                  # Flag to assign mtu Default: False.

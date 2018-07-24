@@ -1224,7 +1224,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 CIDR to creating the interfaces for L3 links.</userAssistText>
+			<userAssistText>IPV4 CIDR to creating the interfaces for L3 links.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
@@ -1399,10 +1399,10 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>CIDR ipv4</displayText>
+			<displayText>CIDR IPV4 for BGP interfaces</displayText>
 			<value>24</value>
 			<choices></choices>
-			<key>pn_cidr_ipv4</key>
+			<key>pn_ebgp_cidr_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
 			<tooltip>CIDR count for bgp ip range</tooltip>
@@ -1413,7 +1413,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 CIDR to creating the interfaces between leaf clusters.</userAssistText>
+			<userAssistText>IPV4 CIDR to creating the interfaces between leaf clusters.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
@@ -1440,13 +1440,13 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>Subnet ipv4</displayText>
+			<displayText>Subnet IPV4 for BGP interfaces</displayText>
 			<value>31</value>
 			<choices></choices>
-			<key>pn_subnet_ipv4</key>
+			<key>pn_ebgp_subnet_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
-			<tooltip>Ipv4 Subnet mask required to creating the interfaces between leaf clusters.</tooltip>
+			<tooltip>IPV4 Subnet mask required to creating the interfaces between leaf clusters.</tooltip>
 			<regex>([0-9]|[12][0-9]|3[01])</regex>
 			<parentKey>null</parentKey>
 			<visible>true</visible>
@@ -1454,7 +1454,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 Subnet mask to calculate link IPs for layer3 fabric.</userAssistText>
+			<userAssistText>IPV4 Subnet mask to calculate link IPs for layer3 fabric.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
@@ -1929,10 +1929,10 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>CIDR ipv4</displayText>
+			<displayText>CIDR IPV4 for OSPF interfaces</displayText>
 			<value>24</value>
 			<choices></choices>
-			<key>pn_cidr_ipv4</key>
+			<key>pn_ospf_cidr_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
 			<tooltip>subnet count for iospf ip range</tooltip>
@@ -1943,7 +1943,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 CIDR to create interfaces between leaf's.</userAssistText>
+			<userAssistText>IPV4 CIDR to create interfaces between leaf's.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
@@ -1970,13 +1970,13 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>Subnet ipv4</displayText>
+			<displayText>Subnet IPV4 for OSPF interfaces</displayText>
 			<value>31</value>
 			<choices></choices>
-			<key>pn_subnet_ipv4</key>
+			<key>pn_ospf_subnet_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
-			<tooltip>Ipv4 Subnet mask to create interfaces between leaf's.</tooltip>
+			<tooltip>IPV4 Subnet mask to create interfaces between leaf's.</tooltip>
 			<regex>([0-9]|[12][0-9]|3[01])</regex>
 			<parentKey>null</parentKey>
 			<visible>true</visible>
@@ -1984,7 +1984,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 Subnet mask to create interfaces between leaf's.</userAssistText>
+			<userAssistText>IPV4 Subnet mask to create interfaces between leaf's.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
@@ -5749,7 +5749,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 CIDR to creating the interfaces for L3 links.</userAssistText>
+			<userAssistText>IPV4 CIDR to creating the interfaces for L3 links.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
@@ -5924,10 +5924,10 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>CIDR ipv4</displayText>
+			<displayText>CIDR IPV4 for BGP interfaces</displayText>
 			<value>24</value>
 			<choices></choices>
-			<key>pn_cidr_ipv4</key>
+			<key>pn_ebgp_cidr_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
 			<tooltip>CIDR count for bgp ip range</tooltip>
@@ -5938,7 +5938,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 CIDR to creating the interfaces between leaf clusters.</userAssistText>
+			<userAssistText>IPV4 CIDR to creating the interfaces between leaf clusters.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
@@ -5965,13 +5965,13 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>Subnet ipv4</displayText>
+			<displayText>Subnet IPV4 for BGP interfaces</displayText>
 			<value>31</value>
 			<choices></choices>
-			<key>pn_subnet_ipv4</key>
+			<key>pn_ebgp_subnet_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
-			<tooltip>Ipv4 Subnet mask required to creating the interfaces between leaf clusters.</tooltip>
+			<tooltip>IPV4 Subnet mask required to creating the interfaces between leaf clusters.</tooltip>
 			<regex>([0-9]|[12][0-9]|3[01])</regex>
 			<parentKey>null</parentKey>
 			<visible>true</visible>
@@ -5979,7 +5979,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 Subnet mask to calculate link IPs for layer3 fabric.</userAssistText>
+			<userAssistText>IPV4 Subnet mask to calculate link IPs for layer3 fabric.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
@@ -6512,10 +6512,10 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>CIDR ipv4</displayText>
+			<displayText>CIDR IPV4 for OSPF interfaces</displayText>
 			<value>24</value>
 			<choices></choices>
-			<key>pn_cidr_ipv4</key>
+			<key>pn_ospf_cidr_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
 			<tooltip>subnet count for iospf ip range</tooltip>
@@ -6526,17 +6526,17 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 CIDR to create interfaces between leaf's.</userAssistText>
+			<userAssistText>IPV4 CIDR to create interfaces between leaf's.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>Subnet ipv4</displayText>
+			<displayText>Subnet IPV4 for OSPF interfaces</displayText>
 			<value>31</value>
 			<choices></choices>
 			<key>pn_ospf_subnet_ipv4</key>
 			<type>text</type>
 			<tagName>input</tagName>
-			<tooltip>Ipv4 Subnet mask required to create interfaces b/w leaf's.</tooltip>
+			<tooltip>IPV4 Subnet mask required to create interfaces b/w leaf's.</tooltip>
 			<regex>([0-9]|[12][0-9]|3[01])</regex>
 			<parentKey>null</parentKey>
 			<visible>true</visible>
@@ -6544,7 +6544,7 @@
 			<selectionPanel>
 				<panel>Netvisor Fabric License</panel>
 			</selectionPanel>
-			<userAssistText>Ipv4 Subnet mask to create interfaces b/w leaf's.</userAssistText>
+			<userAssistText>IPV4 Subnet mask to create interfaces b/w leaf's.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
