@@ -1738,6 +1738,24 @@
 			</selectionPanel>
 			<userAssistText>Enter valid IP</userAssistText>
 		</guiProperties>
+                <guiProperties>
+                        <tabName>general</tabName>
+                        <displayText>CIDR</displayText>
+                        <value>24</value>
+                        <choices></choices>
+                        <key>pn_cidr_ipv4</key>
+                        <type>text</type>
+                        <tagName>input</tagName>
+                        <tooltip>CIDR count for creating L3 Links</tooltip>
+                        <regex>^([0-9]|[12][0-9]|3[01])$</regex>
+                        <parentKey>null</parentKey>
+                        <visible>true</visible>
+                        <isMandatory>true</isMandatory>
+                        <selectionPanel>
+                                <panel>Netvisor Fabric License</panel>
+                        </selectionPanel>
+                        <userAssistText>IPV4 CIDR to creating the interfaces for L3 links.</userAssistText>
+                </guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
 			<displayText>Subnet</displayText>
