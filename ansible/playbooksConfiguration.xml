@@ -1363,7 +1363,7 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>EBGP V4 IP Range</displayText>
+			<displayText>EBGP IPV4 Range</displayText>
 			<value>75.75.75.1</value>
 			<choices></choices>
 			<key>pn_ibgp_ipv4_range</key>
@@ -5906,7 +5906,7 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>EBGP V4 IP Range</displayText>
+			<displayText>EBGP IPV4 Range</displayText>
 			<value>75.75.75.1</value>
 			<choices></choices>
 			<key>pn_ibgp_ipv4_range</key>
