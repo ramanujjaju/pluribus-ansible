@@ -102,7 +102,7 @@ def main():
                     continue
                 else:
                     try:
-                        elements = row.split(" ", 2)
+                        elements = row.split()
                         if len(elements) == 1:
                             if '[switch]' in elements:
                                 pass
