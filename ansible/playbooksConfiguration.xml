@@ -211,24 +211,6 @@
 			<userAssistText>Maximum length of password will be 59</userAssistText>
 		</guiProperties>
 		<guiProperties>
-			<tabName>general</tabName>
-			<displayText>Confirm Password</displayText>
-			<value></value>
-			<choices></choices>
-			<key>confirm_password</key>
-			<type>password</type>
-			<tagName>input</tagName>
-			<tooltip>Enter Password</tooltip>
-			<regex>^.{1,59}$</regex>
-			<parentKey>null</parentKey>
-			<visible>true</visible>
-			<isMandatory>true</isMandatory>
-			<selectionPanel>
-				<panel>Netvisor Fabric License</panel>
-			</selectionPanel>
-			<userAssistText>Password should be matched.</userAssistText>
-		</guiProperties>
-		<guiProperties>
 			<tabName>advance</tabName>
 			<displayText>Toggle Port Speed</displayText>
 			<value>True</value>
@@ -681,24 +663,6 @@
 				<panel>Netvisor Enterprise L2/L3 License</panel>
 			</selectionPanel>
 			<userAssistText>Maximum length of password will be 59</userAssistText>
-		</guiProperties>
-		<guiProperties>
-			<tabName>general</tabName>
-			<displayText>Confirm Password</displayText>
-			<value></value>
-			<choices></choices>
-			<key>confirm_password</key>
-			<type>password</type>
-			<tagName>input</tagName>
-			<tooltip>Enter Password</tooltip>
-			<regex>^.{1,59}$</regex>
-			<parentKey>null</parentKey>
-			<visible>true</visible>
-			<isMandatory>true</isMandatory>
-			<selectionPanel>
-				<panel>Netvisor Enterprise L2/L3 License</panel>
-			</selectionPanel>
-			<userAssistText>Password should be matched.</userAssistText>
 		</guiProperties>
 		<guiProperties>
 			<tabName>advance</tabName>
