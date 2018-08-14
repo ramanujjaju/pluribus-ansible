@@ -1857,7 +1857,7 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>OSPF V4 Area Id</displayText>
+			<displayText>OSPF IPV4 Area Id</displayText>
 			<value>0</value>
 			<choices></choices>
 			<key>pn_ospf_v4_area_id</key>
@@ -1875,7 +1875,7 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>IOSPF V4 IP Range</displayText>
+			<displayText>IOSPF IPV4 Range</displayText>
 			<value>75.75.75.1</value>
 			<choices></choices>
 			<key>pn_iospf_ipv4_range</key>
@@ -6396,7 +6396,7 @@
 		</guiProperties>
 		<guiProperties>
 			<tabName>general</tabName>
-			<displayText>OSPF V4 Area Id</displayText>
+			<displayText>OSPF IPV4 Area Id</displayText>
 			<value>0</value>
 			<choices></choices>
 			<key>pn_ospf_v4_area_id</key>
