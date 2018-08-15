@@ -122,6 +122,30 @@ def run_cli(module, cli):
         return 'Success'
 
 
+def add_loopback_to_ospf(module, switch, vrouter, area_id):
+    """
+    Method to add loopback ip to ospf network.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :param vrouter: Name of the vrouter.
+    :param area_id: OSPF Area id.
+    """
+    cli = pn_cli(module)
+    cli += ' vrouter-loopback-interface-show vrouter-name %s ' % vrouter
+    cli += ' format ip, parsable-delim ,'
+    output = run_cli(module, cli)
+
+    if output:
+        loopback_ip = output.strip().split(',')[1]
+        cli = pn_cli(module)
+        cli += ' vrouter-ospf-add vrouter-name %s ' % vrouter
+        cli += ' network %s/32 ospf-area %s ' % (loopback_ip, area_id)
+        output = run_cli(module, cli)
+        output = '%s: Added loopback ip %s to OSPF for %s\n' % (switch, loopback_ip,
+                                                                vrouter)
+        return output
+
+
 def vrouter_interface_ospf_add(module, switch_name, l3_port, interface_ip, vrouter,
                                ospf_network, area_id):
     """
@@ -175,6 +199,8 @@ def vrouter_interface_ospf_add(module, switch_name, l3_port, interface_ip, vrout
             output += '%s: Added ospf neighbor %s for %s \n' % (switch_name, ospf_network,
                                                                 vrouter)
             CHANGED_FLAG.append(True)
+
+        output += add_loopback_to_ospf(module, switch_name, vrouter, area_id)
 
     return output
 
